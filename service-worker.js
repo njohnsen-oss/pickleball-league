@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v5-picker-skeletons-1';
+const STATIC_CACHE = 'pickleball-static-v6-matchup-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,7 @@ const STATIC_ASSETS = [
   './history.html',
   './players.html',
   './player.html',
+  './matchup.html',
   './settings.html',
   './css/style.css',
   './js/config.js',
@@ -16,6 +17,7 @@ const STATIC_ASSETS = [
   './js/history.js',
   './js/players.js',
   './js/player.js',
+  './js/matchup.js',
   './js/settings.js',
   './js/csv.js',
   './manifest.json',

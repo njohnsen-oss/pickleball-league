@@ -282,6 +282,10 @@ async function loadPlayerStats() {
     document.getElementById('stat-confidence').textContent = `${p.Confidence || 0}%`;
     document.getElementById('stat-singles').textContent = `${p.SinglesWins || 0}-${p.SinglesLosses || 0}`;
     document.getElementById('stat-doubles').textContent = `${p.DoublesWins || 0}-${p.DoublesLosses || 0}`;
+    // Guarded: a phone can briefly run this script against a cached older
+    // player.html that predates the link (see CLAUDE.md, "Caching and deploys").
+    const matchupLink = document.getElementById('matchup-link');
+    if (matchupLink) matchupLink.href = `matchup.html?a=${encodeURIComponent(p.Name)}`;
 
     const eloHistory = (stats.ratingHistory || []).map((pt) => ({
       date: new Date(pt.Date), elo: Number(pt.Elo), gameId: pt.GameId,
@@ -300,6 +304,7 @@ async function loadPlayerStats() {
         <td><a class="player-link" href="player.html?name=${encodeURIComponent(h.Opponent)}">${h.Opponent}</a></td>
         <td>${h.Wins}</td>
         <td>${h.Losses}</td>
+        <td><a class="player-link" href="matchup.html?a=${encodeURIComponent(p.Name)}&b=${encodeURIComponent(h.Opponent)}">Match up</a></td>
       `;
       h2hBody.appendChild(tr);
     });
