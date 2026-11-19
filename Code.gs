@@ -2,9 +2,12 @@
  * Pickleball League Tracker — Apps Script backend.
  * Bind this script to the Google Sheet (Extensions > Apps Script) that has
  * two tabs: "Players" and "Games" with the header rows described below.
+ * A third, optional "Rallies" tab is created automatically the first time a
+ * live-scored game is saved.
  *
  * Players: PlayerId | Name | Elo | GamesPlayed | Wins | Losses | Archived
  * Games:   GameId | Date | Format | SideA_Player1 | SideA_Player2 | SideB_Player1 | SideB_Player2 | ScoreA | ScoreB | Winner | EloDeltaA | EloDeltaB | EloDeltaA1 | EloDeltaA2 | EloDeltaB1 | EloDeltaB2
+ * Rallies: GameId | Seq | ElapsedSec | ServingSide | Server | ServerNumber | Result | ScoreA | ScoreB
  *
  * Deploy: Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone.
  * To ship changes later: Manage deployments > edit existing deployment > Version: New version > Deploy.
@@ -57,6 +60,16 @@ var PLAYERS_HEADERS = ['PlayerId', 'Name', 'Elo', 'GamesPlayed', 'Wins', 'Losses
 // slot deltas (matching the SideA_Player1/SideA_Player2/SideB_Player1/
 // SideB_Player2 columns) — blank for a singles game's unused slot.
 var GAMES_HEADERS = ['GameId', 'Date', 'Format', 'SideA_Player1', 'SideA_Player2', 'SideB_Player1', 'SideB_Player2', 'ScoreA', 'ScoreB', 'Winner', 'EloDeltaA', 'EloDeltaB', 'EloDeltaA1', 'EloDeltaA2', 'EloDeltaB1', 'EloDeltaB2'];
+// Point-by-point log for games scored on the Live Game page, one row per
+// rally, keyed by GameId. A separate tab rather than new Games columns: adding
+// columns to GAMES_HEADERS would make checkHeaders() reject every existing
+// Sheet until someone migrated it by hand. Optional — a Sheet without this tab
+// works fine, and games logged the quick way simply have no rows here.
+// ServingSide/Server/ServerNumber describe who served THAT rally; ScoreA/ScoreB
+// are the score after it. Server is a name, like the Games tab's player columns.
+var RALLIES_HEADERS = ['GameId', 'Seq', 'ElapsedSec', 'ServingSide', 'Server', 'ServerNumber', 'Result', 'ScoreA', 'ScoreB'];
+// A side-out game to 11 runs ~20-60 rallies; this only rejects garbage.
+var MAX_RALLIES_PER_GAME = 400;
 
 function checkHeaders(sheetName, actualHeaders, expectedHeaders) {
   var problems = [];
@@ -116,7 +129,7 @@ function setupSheet() {
   var fixed = [];
   var errors = [];
 
-  [['Players', PLAYERS_HEADERS], ['Games', GAMES_HEADERS]].forEach(function (pair) {
+  [['Players', PLAYERS_HEADERS], ['Games', GAMES_HEADERS], ['Rallies', RALLIES_HEADERS]].forEach(function (pair) {
     try {
       var action = ensureSheetHeaders(ss, pair[0], pair[1]);
       if (action) fixed.push(action);
@@ -129,7 +142,7 @@ function setupSheet() {
     throw new Error(fixed.concat(errors).join(' '));
   }
   if (!fixed.length) {
-    throw new Error('Nothing to fix — both tabs already look correct.');
+    throw new Error('Nothing to fix — all tabs already look correct.');
   }
   return { fixed: fixed };
 }
@@ -195,6 +208,8 @@ function doGet(e) {
       result = getLeagueName();
     } else if (action === 'getCalibrationRecommendations') {
       result = getCalibrationRecommendations();
+    } else if (action === 'getGameRallies') {
+      result = getGameRallies(e.parameter.gameId);
     } else {
       return jsonOutput({ error: 'Unknown action: ' + action });
     }
@@ -232,7 +247,7 @@ function doPost(e) {
       if (cachedResult) {
         result = JSON.parse(cachedResult);
       } else {
-        result = logGame(body.date, body.format, body.sideAPlayers, body.sideBPlayers, body.scoreA, body.scoreB);
+        result = logGame(body.date, body.format, body.sideAPlayers, body.sideBPlayers, body.scoreA, body.scoreB, body.rallies);
         if (requestKey) requestCache.put(requestKey, JSON.stringify(result), 600);
       }
     } else if (action === 'editGame') {
@@ -280,7 +295,8 @@ function getSheet(name) {
 function getSetupStatus() {
   var players = playersSheetToObjects();
   var games = gamesSheetToObjects();
-  return { ok: true, playerCount: players.length, gameCount: games.length };
+  var rallies = ralliesSheetToObjects();
+  return { ok: true, playerCount: players.length, gameCount: games.length, rallyCount: rallies.length };
 }
 
 // ---- Players ----
@@ -436,7 +452,35 @@ function getGames(limit) {
   var games = gamesSheetToObjects();
   games.reverse(); // most recent first (rows are appended in chronological order)
   if (limit) games = games.slice(0, limit);
+  // Lets History show "24 rallies · 8:12" and offer the rally log without a
+  // request per game. The log itself is fetched on demand (getGameRallies).
+  var rallySummary = rallySummaryByGame();
+  games.forEach(function (g) {
+    var summary = rallySummary[g.GameId];
+    g.RallyCount = summary ? summary.count : 0;
+    g.DurationSec = summary ? summary.durationSec : '';
+  });
   return games;
+}
+
+// The next unused GameId. Previously this was 'g' + the sheet's row count,
+// which reissues an existing ID once any row has been deleted (delete g3 of
+// g1..g5 and the next game is a second "g5") — harmless while nothing joined
+// on GameId, but the Rallies tab does. IDs still left in Rallies (e.g. from a
+// game row deleted by hand in the Sheet) are skipped too, so a new game can't
+// inherit someone else's rally log.
+function nextGameId(gamesSheet) {
+  var max = 0;
+  function scan(sheet) {
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (row) {
+      var match = /^g(\d+)$/.exec(String(row[0]));
+      if (match) max = Math.max(max, Number(match[1]));
+    });
+  }
+  scan(gamesSheet);
+  scan(SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rallies'));
+  return 'g' + (max + 1);
 }
 
 // Bundles what the Log Game page needs (full player roster + full game log,
@@ -553,6 +597,107 @@ function findGameRow(gamesSheet, gameId) {
     if (ids[i][0] === gameId) return i + 2;
   }
   throw new Error('Game not found: ' + gameId);
+}
+
+// ---- Rallies (live-scored games) ----
+
+// Unlike getSheet(), a missing Rallies tab isn't an error — it just means no
+// game has been live-scored yet.
+function ralliesSheetToObjects() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rallies');
+  if (!sheet) return [];
+  var values = sheet.getDataRange().getValues();
+  var headers = values[0];
+  checkHeaders('Rallies', headers, RALLIES_HEADERS);
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    if (!row[0]) continue;
+    var obj = {};
+    for (var c = 0; c < RALLIES_HEADERS.length; c++) {
+      obj[headers[c]] = row[c];
+    }
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function rallySummaryByGame() {
+  var summary = {};
+  ralliesSheetToObjects().forEach(function (r) {
+    var s = summary[r.GameId] || (summary[r.GameId] = { count: 0, durationSec: 0 });
+    s.count += 1;
+    s.durationSec = Math.max(s.durationSec, Number(r.ElapsedSec) || 0);
+  });
+  return summary;
+}
+
+function getGameRallies(gameId) {
+  if (!gameId) throw new Error('Missing gameId');
+  var rallies = ralliesSheetToObjects().filter(function (r) { return r.GameId === gameId; });
+  rallies.sort(function (a, b) { return a.Seq - b.Seq; });
+  return { gameId: gameId, rallies: rallies };
+}
+
+// Checks a live-scored game's rally log against the game it's being saved
+// with, and normalizes it into sheet rows (minus the GameId, not known yet).
+// The scoring rules themselves run on the phone (js/live-score.js); this only
+// guarantees the log is well-formed, names players who are actually on the
+// serving side, and ends on the score being saved.
+function validateRallies(rallies, format, sideAPlayers, sideBPlayers, scores) {
+  if (rallies === undefined || rallies === null) return null;
+  if (!Array.isArray(rallies) || !rallies.length) throw new Error('The rally log is empty');
+  if (rallies.length > MAX_RALLIES_PER_GAME) throw new Error('The rally log has more than ' + MAX_RALLIES_PER_GAME + ' rallies');
+  var doubles = format === 'Doubles';
+  function isCount(n) { return Math.floor(n) === n && n >= 0; }
+
+  var rows = rallies.map(function (r, i) {
+    var label = 'Rally ' + (i + 1) + ': ';
+    if (r.servingSide !== 'A' && r.servingSide !== 'B') throw new Error(label + 'serving side must be A or B');
+    var team = r.servingSide === 'A' ? sideAPlayers : sideBPlayers;
+    if (team.indexOf(r.server) === -1) throw new Error(label + r.server + ' isn\'t on the serving side');
+    if (r.result !== 'Point' && r.result !== 'Fault') throw new Error(label + 'result must be Point or Fault');
+    var serverNumber = doubles ? Number(r.serverNumber) : '';
+    if (doubles && serverNumber !== 1 && serverNumber !== 2) throw new Error(label + 'server number must be 1 or 2');
+    var scoreA = Number(r.scoreA);
+    var scoreB = Number(r.scoreB);
+    var elapsed = Number(r.elapsedSec);
+    if (!isCount(scoreA) || !isCount(scoreB) || !isCount(elapsed)) throw new Error(label + 'score and time must be whole numbers');
+    return [i + 1, elapsed, r.servingSide, r.server, serverNumber, r.result, scoreA, scoreB];
+  });
+
+  var last = rows[rows.length - 1];
+  if (last[6] !== scores.scoreA || last[7] !== scores.scoreB) {
+    throw new Error('The rally log ends at ' + last[6] + '-' + last[7] + ' but the game score is ' + scores.scoreA + '-' + scores.scoreB);
+  }
+  return rows;
+}
+
+function appendRallies(gameId, rows) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureSheetHeaders(ss, 'Rallies', RALLIES_HEADERS); // creates the tab on first use
+  var sheet = ss.getSheetByName('Rallies');
+  var values = rows.map(function (row) { return [gameId].concat(row); });
+  sheet.getRange(sheet.getLastRow() + 1, 1, values.length, RALLIES_HEADERS.length).setValues(values);
+}
+
+// Deletes bottom-up in contiguous runs: a game's rallies are appended together,
+// so this is normally one deleteRows() call, but it stays correct if someone
+// has sorted or edited the tab by hand.
+function deleteRalliesForGame(gameId) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Rallies');
+  if (!sheet || sheet.getLastRow() <= 1) return 0;
+  var ids = sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues();
+  var deleted = 0;
+  var i = ids.length - 1;
+  while (i >= 0) {
+    if (ids[i][0] !== gameId) { i--; continue; }
+    var end = i;
+    while (i >= 0 && ids[i][0] === gameId) i--;
+    sheet.deleteRows(i + 3, end - i); // ids[k] lives on sheet row k + 2
+    deleted += end - i;
+  }
+  return deleted;
 }
 
 // ---- Global rating model ----
@@ -848,8 +993,10 @@ function recomputeAllStats() {
   }
 }
 
-function logGame(date, format, sideAPlayers, sideBPlayers, scoreA, scoreB) {
+// `rallies` is optional: only games scored on the Live Game page send one.
+function logGame(date, format, sideAPlayers, sideBPlayers, scoreA, scoreB, rallies) {
   var validScores = validateGameInput(format, sideAPlayers, sideBPlayers, scoreA, scoreB);
+  var rallyRows = validateRallies(rallies, format, sideAPlayers, sideBPlayers, validScores);
 
   var players = playersSheetToObjects();
   var sideAObjs = sideAPlayers.map(function (n) { return findPlayerByName(players, n); });
@@ -859,8 +1006,7 @@ function logGame(date, format, sideAPlayers, sideBPlayers, scoreA, scoreB) {
   });
 
   var gamesSheet = getSheet('Games');
-  var gamesCount = gamesSheet.getLastRow(); // includes header row, so this is a safe running count
-  var gameId = 'g' + gamesCount;
+  var gameId = nextGameId(gamesSheet);
   var gameDate = date ? new Date(date) : new Date();
   gamesSheet.appendRow([
     gameId, gameDate, format,
@@ -868,6 +1014,7 @@ function logGame(date, format, sideAPlayers, sideBPlayers, scoreA, scoreB) {
     sideBPlayers[0] || '', sideBPlayers[1] || '',
     validScores.scoreA, validScores.scoreB, '', 0, 0
   ]);
+  if (rallyRows) appendRallies(gameId, rallyRows);
 
   recomputeAllStats();
 
@@ -887,6 +1034,15 @@ function editGame(passcode, gameId, date, format, sideAPlayers, sideBPlayers, sc
 
   var gamesSheet = getSheet('Games');
   var rowIndex = findGameRow(gamesSheet, gameId);
+
+  // A live-scored game's rally log only describes the game as it was played.
+  // Fixing the date keeps it; changing who played or the score would leave it
+  // contradicting the game, so it's dropped (History warns before saving).
+  var before = gamesSheet.getRange(rowIndex, 3, 1, 7).getValues()[0]; // Format..ScoreB
+  var after = [format, sideAPlayers[0] || '', sideAPlayers[1] || '', sideBPlayers[0] || '', sideBPlayers[1] || '', validScores.scoreA, validScores.scoreB];
+  var changed = before.some(function (value, i) { return String(value) !== String(after[i]); });
+  var ralliesDropped = changed ? deleteRalliesForGame(gameId) > 0 : false;
+
   var gameDate = date ? new Date(date) : new Date();
   gamesSheet.getRange(rowIndex, 1, 1, 9).setValues([[
     gameId, gameDate, format,
@@ -898,7 +1054,7 @@ function editGame(passcode, gameId, date, format, sideAPlayers, sideBPlayers, sc
   recomputeAllStats();
 
   var savedGame = gamesSheetToObjects().filter(function (g) { return g.GameId === gameId; })[0];
-  return { game: savedGame, leaderboard: getLeaderboard() };
+  return { game: savedGame, leaderboard: getLeaderboard(), ralliesDropped: ralliesDropped };
 }
 
 function deleteGame(passcode, gameId) {
@@ -906,6 +1062,7 @@ function deleteGame(passcode, gameId) {
   var gamesSheet = getSheet('Games');
   var rowIndex = findGameRow(gamesSheet, gameId);
   gamesSheet.deleteRow(rowIndex);
+  deleteRalliesForGame(gameId);
   recomputeAllStats();
 
   return { deleted: { GameId: gameId }, leaderboard: getLeaderboard() };
