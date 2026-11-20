@@ -245,6 +245,8 @@ function renderLive(live, state) {
     if (kind !== 'point') {
       playFaultAnimation($('tv-court'), replayLiveGame(setup, live.events.slice(0, -1)), state, { shake: 3 });
       setTimeout(() => flash(kind === 'sideout' ? 'Side out' : '2nd server', state.servingSide), 650);
+    } else {
+      animateCourtMoves($('tv-court'), replayLiveGame(setup, live.events.slice(0, -1)), state);
     }
   }
   shown = { requestId: live.requestId, events: live.events.length };

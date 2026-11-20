@@ -43,7 +43,7 @@ function courtSvg(state) {
       if (!name) return;
       const [x, y] = COURT_SPOTS[side][court];
       const serving = side === s && name === state.server;
-      players += `<g class="live-player side-${side.toLowerCase()}${serving ? ' serving' : ''}" transform="translate(${x} ${y})">`
+      players += `<g class="live-player side-${side.toLowerCase()}${serving ? ' serving' : ''}" data-name="${escapeHtml(name)}" transform="translate(${x} ${y})">`
         + `<circle r="17"></circle><text class="live-player-initials" y="4.5">${escapeHtml(initials(name))}</text>`
         + `<text class="live-player-name" y="31">${escapeHtml(firstName(name))}</text>`
         + (serving ? '<g class="live-svg-ball" transform="translate(15 -14)">' + pickleballSvg({ x: -8, y: -8, size: 16, simple: true }) + '</g>' : '')
@@ -283,6 +283,120 @@ function paddleSvg(opts = {}) {
     + `<path d="${face}" fill="none" stroke="${neon}" stroke-width="6.5"/>`
     + `<path d="${face}" fill="none" stroke="#000" stroke-opacity="0.3" stroke-width="1" transform="translate(0 0.8)"/>`
     + '</svg>';
+}
+
+// ---------- side switch animation (on the court) ----------
+//
+// When the serving team scores in doubles, the partners swap courts: they
+// walk toward each other, pass side by side in the middle and tap paddles
+// (raised paddles swing in, clink with a small spark burst, recoil), then
+// head to their new spots and spring into place. In singles the players just
+// slide to the other court with the same spring. Runs right after the court
+// has been redrawn in its new state: players start at their old spots and
+// travel to where the new drawing put them. Never blocks taps; the next
+// redraw replaces it; skipped when the device asks for reduced motion.
+function animateCourtMoves(courtHost, prev, next, opts = {}) {
+  const svg = courtHost && courtHost.querySelector('.live-court-svg');
+  if (!svg || !svg.animate || !prev || !next) return;
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const spotOf = (state, name) => {
+    for (const side of ['A', 'B']) for (const court of ['right', 'left']) if (state.courts[side][court] === name) return { side, at: COURT_SPOTS[side][court] };
+    return null;
+  };
+  const moves = [];
+  svg.querySelectorAll('.live-player').forEach((el) => {
+    const from = spotOf(prev, el.dataset.name), to = spotOf(next, el.dataset.name);
+    if (from && to && (from.at[0] !== to.at[0] || from.at[1] !== to.at[1])) moves.push({ el, side: to.side, from: from.at, to: to.at });
+  });
+  if (!moves.length) return;
+
+  const T = Math.round(1300 * (opts.speed || 1)); // a beat slower so the paddle tap reads
+  const tr = (x, y, r = 0) => `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${r}deg)`;
+  const NS = 'http://www.w3.org/2000/svg';
+  svg.classList.add('fx-swapping');
+  const highFive = next.doubles && moves.length === 2 && moves[0].side === moves[1].side;
+  const HAND = 17, PADDLE = 30; // paddle grip sits at the body's edge; paddle length in court units
+  let contact = null;
+
+  moves.forEach((m) => {
+    const dy = Math.sign(m.to[1] - m.from[1]) || 1;
+    const dx = Math.sign(m.to[0] - m.from[0]);
+    const over = 5; // spring overshoot, in court units
+    const endOver = [m.to[0] + dx * over, m.to[1] + dy * over];
+    const endBack = [m.to[0] - dx * 1.5, m.to[1] - dy * 1.5];
+    let frames;
+    if (highFive) {
+      // The one heading down passes on the left, the other on the right: side by side, a paddle's reach apart.
+      const lane = dy > 0 ? -1 : 1;
+      const cx = m.from[0], cy = (m.from[1] + m.to[1]) / 2;
+      const meet = [cx + lane * 20, cy];
+      frames = [
+        { offset: 0, transform: tr(m.from[0], m.from[1]), easing: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+        { offset: 0.33, transform: tr(meet[0], meet[1] - dy * 2), easing: 'ease-out' },
+        { offset: 0.52, transform: tr(meet[0], meet[1] + dy * 2), easing: 'cubic-bezier(0.5, 0, 0.75, 0)' },
+        { offset: 0.84, transform: tr(endOver[0], endOver[1]), easing: 'ease-out' },
+        { offset: 0.93, transform: tr(endBack[0], endBack[1]), easing: 'ease-in-out' },
+        { offset: 1, transform: tr(m.to[0], m.to[1]) },
+      ];
+      // A paddle in the inside hand, raised, that swings in to meet the partner's.
+      const hand = -lane * HAND; // toward the partner
+      const rest = lane * 30, hit = -lane * Math.round((Math.asin(Math.min(1, (20 - HAND) / PADDLE)) * 180) / Math.PI), recoil = lane * 6;
+      const pg = document.createElementNS(NS, 'g');
+      pg.setAttribute('class', 'fx-paddle');
+      pg.innerHTML = `<g class="fx-paddle-swing">${paddleSvg().replace('<svg ', `<svg x="-6.75" y="${-PADDLE}" width="13.5" height="${PADDLE}" `)}</g>`;
+      pg.setAttribute('transform', `translate(${hand} 0)`);
+      m.el.appendChild(pg);
+      pg.querySelector('.fx-paddle-swing').animate([
+        { offset: 0, opacity: 0, transform: `rotate(${rest}deg)` },
+        { offset: 0.14, opacity: 1, transform: `rotate(${rest}deg)` },
+        { offset: 0.3, opacity: 1, transform: `rotate(${rest}deg)`, easing: 'cubic-bezier(0.5, 0, 0.9, 0.6)' }, // wind-up held, then swing
+        { offset: 0.4, opacity: 1, transform: `rotate(${hit}deg)`, easing: 'cubic-bezier(0.2, 0.9, 0.3, 1)' }, // clink
+        { offset: 0.5, opacity: 1, transform: `rotate(${recoil}deg)`, easing: 'ease-in' },
+        { offset: 0.72, opacity: 0, transform: `rotate(${rest}deg)` },
+        { offset: 1, opacity: 0, transform: `rotate(${rest}deg)` },
+      ], { duration: T, fill: 'both' });
+      contact = [cx, cy - Math.cos((Math.abs(hit) * Math.PI) / 180) * PADDLE + 3];
+    } else {
+      frames = [
+        { offset: 0, transform: tr(m.from[0], m.from[1]), easing: 'cubic-bezier(0.5, 0, 0.3, 1)' },
+        { offset: 0.72, transform: tr(endOver[0], endOver[1]), easing: 'ease-out' },
+        { offset: 0.88, transform: tr(endBack[0], endBack[1]), easing: 'ease-in-out' },
+        { offset: 1, transform: tr(m.to[0], m.to[1]) },
+      ];
+    }
+    m.el.style.transformBox = 'view-box';
+    m.el.style.transformOrigin = '0 0';
+    m.el.animate(frames, { duration: T });
+  });
+
+  if (contact) {
+    // Spark burst where the paddles meet.
+    const [cx, cy] = contact;
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'fx-spark');
+    const colors = ['#FCB92E', '#FFFFFF', '#C9F23C'];
+    let html = `<circle class="fx-spark-flash" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9"></circle>`;
+    for (let i = 0; i < 10; i += 1) html += `<circle class="fx-spark-dot" cx="0" cy="0" r="${i % 2 ? 1.6 : 2.2}" fill="${colors[i % 3]}"></circle>`;
+    g.innerHTML = html;
+    svg.appendChild(g);
+    const at = T * 0.4;
+    g.querySelector('.fx-spark-flash').animate([{ opacity: 0, transform: 'scale(0.2)' }, { opacity: 0.85, transform: 'scale(1)', offset: 0.25 }, { opacity: 0, transform: 'scale(1.6)' }],
+      { duration: 360, delay: at, fill: 'both', easing: 'ease-out' });
+    g.querySelectorAll('.fx-spark-dot').forEach((dot, i) => {
+      const a = (i / 10) * Math.PI * 2 + 0.3;
+      const r1 = 4, r2 = 16 + (i % 3) * 5;
+      dot.animate([
+        { opacity: 0, transform: tr(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1) },
+        { opacity: 1, transform: tr(cx + Math.cos(a) * r1, cy + Math.sin(a) * r1), offset: 0.05 },
+        { opacity: 0, transform: tr(cx + Math.cos(a) * r2, cy + Math.sin(a) * r2) },
+      ], { duration: 420, delay: at, fill: 'both', easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' });
+    });
+    setTimeout(() => g.remove(), at + 480);
+  }
+  setTimeout(() => {
+    svg.classList.remove('fx-swapping');
+    svg.querySelectorAll('.fx-paddle').forEach((el) => el.remove());
+  }, T);
 }
 
 // What one rally did, for the scorer's Undo label and the TV's rally feed.

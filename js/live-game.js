@@ -262,6 +262,7 @@ function tap(result) {
   const after = replayLiveGame(game.setup, game.events);
   if (after.over) return;
   if (result === 'Fault') playFaultAnimation($('live-court'), before, after, { shakeEl: document.querySelector('.live-court-wrap'), speed: 0.85, shake: 4 });
+  else animateCourtMoves($('live-court'), before, after, { speed: 0.85 });
   // The toast waits for the ball to reach the net, so it doesn't cover the fault animation.
   const toastDelay = result === 'Fault' ? 650 : 0;
   if (after.servingSide !== before.servingSide) setTimeout(() => showToast(`Side out · ${firstName(after.server)} serves`, after.servingSide), toastDelay);
