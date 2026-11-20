@@ -3,6 +3,33 @@ let allPlayers = [];
 let currentFormatFilter = '';
 let currentPlayerFilter = '';
 let editingGameId = null;
+// Rally logs (live-scored games) are fetched on demand and remembered, and the
+// open ones are tracked so a re-render doesn't snap them shut.
+const openRallyLogs = new Set();
+const rallyLogCache = {};
+
+function fmtClock(sec) {
+  const n = Math.max(0, Math.floor(Number(sec) || 0));
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, '0')}`;
+}
+
+function rallyLogHtml(g) {
+  if (!(Number(g.RallyCount) > 0)) return '';
+  const open = openRallyLogs.has(g.GameId);
+  const label = `Rally log · ${g.RallyCount} rallies${g.DurationSec !== '' && g.DurationSec != null ? ' · ' + fmtClock(g.DurationSec) : ''}`;
+  let body = '';
+  if (open) {
+    const rallies = rallyLogCache[g.GameId];
+    body = !rallies
+      ? '<div class="rally-log">Loading…</div>'
+      : rallies.error
+      ? `<div class="rally-log">Could not load the rally log: ${rallies.error}</div>`
+      : `<div class="rally-log"><ol>${rallies.map((r) => `<li><span>#${r.Seq}</span><span>${fmtClock(r.ElapsedSec)}</span>`
+        + `<span class="${r.Result === 'Point' ? 'rally-point' : 'rally-fault'}">${r.Result} · ${String(r.Server).split(' ')[0]}${r.ServerNumber ? ' (' + r.ServerNumber + ')' : ''}</span>`
+        + `<span>${r.ScoreA}-${r.ScoreB}</span></li>`).join('')}</ol></div>`;
+  }
+  return `<button type="button" class="rally-log-toggle" data-action="rallies" data-gameid="${g.GameId}">${open ? '▾' : '▸'} ${label}</button>${body}`;
+}
 
 function fmtDelta(d) {
   const n = Number(d);
@@ -54,6 +81,7 @@ function gameCard(g) {
         </div>
       </div>
       ${rowsHtml}
+      ${rallyLogHtml(g)}
     </div>`;
 }
 
@@ -271,7 +299,21 @@ document.getElementById('game-list').addEventListener('click', async (e) => {
   const action = btn.dataset.action;
   const gameId = btn.dataset.gameid;
 
-  if (action === 'edit') {
+  if (action === 'rallies') {
+    if (openRallyLogs.has(gameId)) openRallyLogs.delete(gameId);
+    else openRallyLogs.add(gameId);
+    if (rallyLogCache[gameId] && rallyLogCache[gameId].error) delete rallyLogCache[gameId]; // retry a failed load
+    applyFiltersAndRender();
+    if (openRallyLogs.has(gameId) && !rallyLogCache[gameId]) {
+      try {
+        const data = await apiGet('getGameRallies', { gameId });
+        rallyLogCache[gameId] = data.rallies || [];
+      } catch (err) {
+        rallyLogCache[gameId] = { error: err.message };
+      }
+      applyFiltersAndRender();
+    }
+  } else if (action === 'edit') {
     btn.disabled = true;
     await ensurePlayersLoaded();
     btn.disabled = false;

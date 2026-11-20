@@ -124,7 +124,7 @@ function clearStoredPasscode() {
 }
 
 function buildAdminChrome() {
-  document.querySelectorAll('nav.tab-bar a[href="log-game.html"]').forEach((link) => link.classList.add('admin-nav-item'));
+  document.querySelectorAll('nav.tab-bar a[href="log-game.html"], nav.tab-bar a[href="live-game.html"]').forEach((link) => link.classList.add('admin-nav-item'));
 
   const header = document.querySelector('header.top-bar');
   if (!header || document.getElementById('admin-mode-toggle')) return;
