@@ -151,6 +151,106 @@ function pickleballDataUri() {
 }
 if (typeof document !== 'undefined') document.documentElement.style.setProperty('--pb-ball', pickleballDataUri());
 
+// ---------- fault animation (on the court) ----------
+//
+// Drawn inside the court diagram (top-down), so height is shown the classic
+// way: the ball grows a little and its shadow slides away the higher it is.
+// The ball leaves the server toward the receiver, stops dead at the net, the
+// court shakes (~200ms), the ball drops on its own side on a heavy curve,
+// takes two dead bounces and rolls to whoever serves next, where the normal
+// serving ball takes over. It never blocks taps: the next render of the court
+// replaces it, and it's skipped when the device asks for reduced motion.
+
+function cancelFaultAnimation(courtHost) {
+  if (!courtHost) return;
+  courtHost.querySelectorAll('.fx-fault').forEach((el) => el.remove());
+  const svg = courtHost.querySelector('.live-court-svg');
+  if (svg) svg.classList.remove('fx-hide-ball');
+}
+
+// prev / next: replayLiveGame states before and after the fault.
+// opts: { shakeEl, speed (1 = TV timing), shake (px of the strongest shake step) }
+function playFaultAnimation(courtHost, prev, next, opts = {}) {
+  const svg = courtHost && courtHost.querySelector('.live-court-svg');
+  if (!svg || !svg.animate || !prev || !next) return;
+  cancelFaultAnimation(courtHost);
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const g = document.createElementNS(NS, 'g');
+  g.setAttribute('class', 'fx-fault');
+  g.innerHTML = '<ellipse class="fx-shadow" cx="0" cy="0" rx="7" ry="4"></ellipse>'
+    + '<g class="fx-ball"><g class="fx-ball-spin">' + pickleballSvg({ x: -8, y: -8, size: 16, simple: true }) + '</g></g>';
+  svg.appendChild(g);
+  svg.classList.add('fx-hide-ball');
+
+  // Where things are, in court units (viewBox 340 x 180; net at x = 170).
+  const ballSpot = (state) => { const [x, y] = COURT_SPOTS[state.servingSide][state.serveCourt]; return [x + 15, y - 14]; };
+  const [sx, sy] = ballSpot(prev);
+  const [rx, ry] = COURT_SPOTS[prev.receivingSide][prev.serveCourt];
+  const dir = prev.servingSide === 'A' ? 1 : -1;
+  const nx = 170 - dir * 9; // ball's edge meets the net
+  const ny = sy + (ry - sy) * ((nx - sx) / (rx - sx || 1));
+  const [ex, ey] = ballSpot(next);
+  const b1 = [nx - dir * 5, ny + 2], b2 = [nx - dir * 8, ny + 3];
+
+  // Path points: [time 0..1, x, y, height, easing into the next point]
+  const H = 9;
+  const pts = [
+    [0, sx, sy, H * 0.7, 'linear'],
+    [0.22, nx, ny, H, 'cubic-bezier(0.55, 0, 1, 0.45)'], // dead stop at the net, then gravity
+    [0.4, nx - dir * 2, ny + 1, 0, 'cubic-bezier(0, 0.55, 0.45, 1)'],
+    [0.48, (nx - dir * 2 + b1[0]) / 2, b1[1], 3.2, 'cubic-bezier(0.55, 0, 1, 0.45)'],
+    [0.56, b1[0], b1[1], 0, 'cubic-bezier(0, 0.55, 0.45, 1)'],
+    [0.61, (b1[0] + b2[0]) / 2, b2[1], 1.1, 'cubic-bezier(0.55, 0, 1, 0.45)'],
+    [0.66, b2[0], b2[1], 0, 'cubic-bezier(0.25, 0.6, 0.35, 1)'],
+    [1, ex, ey, 0, 'linear'],
+  ];
+  const T = Math.round(1150 * (opts.speed || 1));
+  const f = (v) => v.toFixed(2);
+  g.querySelector('.fx-ball').animate(pts.map(([t, x, y, h, easing]) => ({
+    offset: t, easing, transform: `translate(${f(x - h * 0.35)}px, ${f(y - h * 0.55)}px) scale(${f(1 + h * 0.035)})`,
+  })), { duration: T, fill: 'forwards' });
+  g.querySelector('.fx-shadow').animate(pts.map(([t, x, y, h, easing]) => ({
+    offset: t, easing, opacity: Math.max(0.15, 0.55 - h * 0.04), transform: `translate(${f(x + h * 0.25)}px, ${f(y + 7 + h * 0.2)}px) scale(${f(1 - h * 0.03)})`,
+  })), { duration: T, fill: 'forwards' });
+  // Roll: spin by distance travelled along the ground.
+  const rollDist = Math.hypot(ex - b2[0], ey - b2[1]);
+  const spin = Math.sign(ex - b2[0] || 1) * (rollDist / 8) * (180 / Math.PI);
+  g.querySelector('.fx-ball-spin').animate([
+    { offset: 0, transform: 'rotate(0deg)' }, { offset: 0.22, transform: `rotate(${dir * 240}deg)` },
+    { offset: 0.66, transform: `rotate(${dir * 240}deg)`, easing: 'cubic-bezier(0.25, 0.6, 0.35, 1)' },
+    { offset: 1, transform: `rotate(${dir * 240 + spin}deg)` },
+  ], { duration: T, fill: 'forwards' });
+
+  // Impact: the net flashes and the court shakes.
+  const impact = T * 0.22;
+  const net = svg.querySelector('.live-court-net');
+  const px = opts.shake || 4;
+  const shakeEl = opts.shakeEl || courtHost;
+  setTimeout(() => {
+    if (!g.isConnected) return;
+    if (net && net.animate) net.animate([{ stroke: '#FFFFFF', strokeWidth: 7 }, { stroke: '#F7F9FF', strokeWidth: 4 }], { duration: 260, easing: 'ease-out' });
+    const k = (n) => f(n * px / 4) + 'px';
+    shakeEl.animate([
+      { transform: 'translate(0, 0)' },
+      { transform: `translate(${k(-4)}, ${k(1)})`, offset: 0.15 },
+      { transform: `translate(${k(4)}, ${k(-2)})`, offset: 0.3 },
+      { transform: `translate(${k(-3)}, ${k(2)})`, offset: 0.45 },
+      { transform: `translate(${k(2)}, ${k(-1)})`, offset: 0.6 },
+      { transform: `translate(${k(-1)}, 0)`, offset: 0.8 },
+      { transform: 'translate(0, 0)' },
+    ], { duration: 200, easing: 'ease-out' });
+  }, impact);
+
+  // Hand over to the normal serving ball.
+  setTimeout(() => {
+    if (!g.isConnected) return;
+    svg.classList.remove('fx-hide-ball');
+    g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'forwards' }).onfinish = () => g.remove();
+  }, T);
+}
+
 // What one rally did, for the scorer's Undo label and the TV's rally feed.
 function liveRallyKind(rally, nextServingSide, doubles) {
   if (rally.result === 'Point') return 'point';

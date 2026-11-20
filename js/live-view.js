@@ -239,8 +239,10 @@ function renderLive(live, state) {
   if (oneMore) {
     const r = state.rallies[state.rallies.length - 1];
     const kind = liveRallyKind(r, state.servingSide, state.doubles);
-    if (kind === 'sideout') flash('Side out', state.servingSide);
-    else if (kind === 'second') flash('2nd server', state.servingSide);
+    if (kind !== 'point') {
+      playFaultAnimation($('tv-court'), replayLiveGame(setup, live.events.slice(0, -1)), state, { shake: 3 });
+      setTimeout(() => flash(kind === 'sideout' ? 'Side out' : '2nd server', state.servingSide), 650);
+    }
   }
   shown = { requestId: live.requestId, events: live.events.length };
 }
