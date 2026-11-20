@@ -1,8 +1,10 @@
-const STATIC_CACHE = 'pickleball-static-v6-matchup-1';
+const STATIC_CACHE = 'pickleball-static-v8-live-tv-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './log-game.html',
+  './live-game.html',
+  './live-view.html',
   './history.html',
   './players.html',
   './player.html',
@@ -14,6 +16,11 @@ const STATIC_ASSETS = [
   './js/admin.js',
   './js/leaderboard.js',
   './js/log-game.js',
+  './js/live-score.js',
+  './js/live-render.js',
+  './js/live-game.js',
+  './js/live-view.js',
+  './js/vendor/qrcode.min.js',
   './js/history.js',
   './js/players.js',
   './js/player.js',

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Live Scoreboard — Pickleball</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;700;800&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0E125B" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Pickleball" />
+</head>
+<body class="tv-page">
+  <div class="tv" id="tv" data-screen="loading">
+    <header class="tv-top">
+      <div class="tv-brand"><img src="icons/icon-192.png" alt="" /><span id="league-banner">Pickleball League</span></div>
+      <div class="tv-top-mid">
+        <span class="tv-pill waiting" id="tv-pill"><i></i><span id="tv-pill-text">LIVE</span></span>
+        <span class="tv-meta" id="tv-meta"></span>
+      </div>
+      <div class="tv-top-right">
+        <span class="tv-clock" id="tv-clock">0:00</span>
+        <button type="button" class="tv-icon" id="tv-fullscreen" title="Full screen" aria-label="Full screen">⛶</button>
+      </div>
+    </header>
+
+    <!-- Game on -->
+    <main class="tv-live" id="tv-live">
+      <section class="tv-board">
+        <div class="tv-team side-a" id="tv-team-a">
+          <div class="tv-team-players"></div>
+          <div class="tv-score" aria-live="polite">0</div>
+          <div class="tv-serving"><span class="live-ball-icon" aria-hidden="true"></span><span class="tv-serving-text">Serving</span></div>
+        </div>
+        <div class="tv-center">
+          <div class="tv-call-label">Call</div>
+          <div class="tv-call" id="tv-call">0 – 0 – 2</div>
+          <div class="tv-caption" id="tv-caption"></div>
+          <div class="tv-gamepoint" id="tv-gamepoint" hidden></div>
+          <div class="tv-chance" id="tv-chance">
+            <div class="tv-chance-head"><b class="a" id="tv-chance-a">50%</b><span class="tv-chance-label">Win chance</span><b class="b" id="tv-chance-b">50%</b></div>
+            <div class="tv-chance-bar"><i id="tv-chance-fill" style="width:50%"></i></div>
+          </div>
+        </div>
+        <div class="tv-team side-b" id="tv-team-b">
+          <div class="tv-team-players"></div>
+          <div class="tv-score" aria-live="polite">0</div>
+          <div class="tv-serving"><span class="live-ball-icon" aria-hidden="true"></span><span class="tv-serving-text">Serving</span></div>
+        </div>
+        <div class="tv-flash" id="tv-flash" aria-hidden="true"></div>
+      </section>
+
+      <section class="tv-court" id="tv-court"></section>
+
+      <aside class="tv-side">
+        <div class="tv-run" id="tv-run"></div>
+        <ol class="tv-feed" id="tv-feed"></ol>
+        <div class="tv-qr-mini"><div class="tv-qr" id="tv-qr-live"></div><span>Follow on<br />your phone</span></div>
+      </aside>
+    </main>
+
+    <!-- Game over -->
+    <section class="tv-final" id="tv-final">
+      <canvas class="tv-confetti" id="tv-confetti" aria-hidden="true"></canvas>
+      <div class="tv-final-kicker"><span aria-hidden="true">🏆</span> Final</div>
+      <div class="tv-final-names" id="tv-final-names"></div>
+      <div class="tv-final-score" id="tv-final-score"></div>
+      <div class="tv-final-badge" id="tv-final-badge" hidden></div>
+      <div class="tv-final-stats" id="tv-final-stats"></div>
+      <div class="tv-final-foot" id="tv-final-foot"></div>
+    </section>
+
+    <!-- Nothing on -->
+    <section class="tv-waiting" id="tv-waiting">
+      <div class="tv-bounce" aria-hidden="true"><span class="tv-ball"></span><span class="tv-shadow"></span></div>
+      <h1 id="tv-waiting-title">Connecting…</h1>
+      <p id="tv-waiting-sub">This screen switches on by itself when the next game starts.</p>
+      <div class="tv-qr-card"><div class="tv-qr" id="tv-qr-wait"></div><span>Scan to follow<br />on your phone</span></div>
+    </section>
+
+    <footer class="tv-foot">
+      <span class="tv-sync wait" id="tv-sync"><i></i><span id="tv-sync-text">Connecting…</span></span>
+      <span id="tv-foot-right"></span>
+    </footer>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/live-score.js"></script>
+  <script src="js/vendor/qrcode.min.js"></script>
+  <script src="js/live-render.js"></script>
+  <script src="js/live-view.js"></script>
+</body>
+</html>

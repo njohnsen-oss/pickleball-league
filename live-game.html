@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <title>Live Game — Pickleball</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;700&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0E125B" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Pickleball" />
+</head>
+<body class="live-page">
+  <div class="league-banner" id="league-banner"></div>
+  <header class="top-bar"><h1>Live Game</h1><button id="settings-btn" class="settings-link" title="Change data source">⚙</button></header>
+  <main>
+    <section class="admin-required-card locked-only">
+      <div class="admin-required-icon">🔒</div>
+      <h2>Admin Mode required</h2>
+      <p>Unlock this browser to score games live and save them to the league.</p>
+      <button type="button" class="btn" id="unlock-live">Unlock Admin Mode</button>
+      <p class="live-watch-link"><a href="live-view.html">Just watching? Open the live scoreboard →</a></p>
+    </section>
+
+    <div class="admin-only-section">
+      <!-- 1. Setup -->
+      <section id="live-setup" style="display:none">
+        <div class="toggle-group" id="live-format">
+          <button type="button" data-format="Singles">Singles</button>
+          <button type="button" data-format="Doubles" class="active">Doubles</button>
+        </div>
+
+        <div class="live-lineup" id="live-team-slots">
+          <div class="live-lineup-team side-a">
+            <div class="live-lineup-head"><span class="live-side-dot">A</span>Side A<button type="button" class="live-swap-court" data-side="a" title="Swap who starts in the right court">⇄ Courts</button></div>
+            <div class="slot-names" id="live-slots-a"></div>
+          </div>
+          <div class="live-lineup-vs" aria-hidden="true">VS</div>
+          <div class="live-lineup-team side-b">
+            <div class="live-lineup-head"><span class="live-side-dot">B</span>Side B<button type="button" class="live-swap-court" data-side="b" title="Swap who starts in the right court">⇄ Courts</button></div>
+            <div class="slot-names" id="live-slots-b"></div>
+          </div>
+        </div>
+
+        <div class="picker-heading">
+          <span class="picker-hint" id="live-picker-hint"></span>
+          <button type="button" class="picker-clear" id="live-clear">Clear</button>
+        </div>
+        <div class="player-grid live-player-grid" id="live-player-grid"></div>
+
+        <div class="live-option">
+          <span class="live-option-label">Serves first</span>
+          <div class="toggle-group live-serve-toggle" id="live-first-server">
+            <button type="button" data-side="A" class="active">Side A</button>
+            <button type="button" data-side="B">Side B</button>
+          </div>
+        </div>
+
+        <div class="live-option">
+          <span class="live-option-label">Game to</span>
+          <div class="toggle-group" id="live-target">
+            <button type="button" data-target="11" class="active">11</button>
+            <button type="button" data-target="15">15</button>
+            <button type="button" data-target="21">21</button>
+          </div>
+        </div>
+
+        <div class="live-odds" id="live-odds" style="display:none"></div>
+
+        <button type="button" class="primary btn live-start" id="live-start" disabled><span class="live-ball-icon" aria-hidden="true"></span>Start game</button>
+        <div id="live-setup-status" class="status" style="display:none"></div>
+        <button type="button" class="live-tv-link" id="live-tv-setup"><span class="live-sync-dot idle"></span>Show the game on a TV or another phone</button>
+      </section>
+
+      <!-- 2. Scoring -->
+      <section id="live-scoring" style="display:none">
+        <div class="live-scoreboard">
+          <div class="live-scoreboard-top">
+            <span class="live-chip" id="live-clock">0:00</span>
+            <span class="live-game-point" id="live-game-point" style="display:none">Game point</span>
+            <span class="live-chip" id="live-rally-count">0 rallies</span>
+          </div>
+          <div class="live-tiles">
+            <div class="live-tile side-a" id="live-team-a">
+              <span class="live-tile-names"></span>
+              <span class="live-tile-score">0</span>
+              <span class="live-tile-serving"><span class="live-ball-icon" aria-hidden="true"></span>Serving</span>
+            </div>
+            <div class="live-tile side-b" id="live-team-b">
+              <span class="live-tile-names"></span>
+              <span class="live-tile-score">0</span>
+              <span class="live-tile-serving"><span class="live-ball-icon" aria-hidden="true"></span>Serving</span>
+            </div>
+          </div>
+          <div class="live-call-row">
+            <span class="live-call-label">Call</span>
+            <span class="live-call" id="live-call" aria-live="polite">0 – 0 – 2</span>
+          </div>
+          <div class="live-call-caption" id="live-call-caption"></div>
+        </div>
+
+        <div class="live-court-wrap">
+          <div class="live-court" id="live-court"></div>
+          <div class="live-toast" id="live-toast" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="live-actions">
+          <button type="button" class="live-btn live-point" id="live-point">
+            <span class="live-btn-kicker">Point</span>
+            <span class="live-btn-label" id="live-point-label">Noah &amp; Sarah</span>
+            <span class="live-btn-sub" id="live-point-sub"></span>
+          </button>
+          <button type="button" class="live-btn live-fault" id="live-fault">
+            <span class="live-btn-kicker">Fault</span>
+            <span class="live-btn-label" id="live-fault-label">Side out</span>
+            <span class="live-btn-sub" id="live-fault-sub"></span>
+          </button>
+        </div>
+
+        <div class="live-bottom-row">
+          <button type="button" class="live-undo" id="live-undo">
+            <span class="live-undo-icon" aria-hidden="true">↶</span>
+            <span class="live-undo-text"><b>Undo</b><span id="live-undo-sub">Nothing yet</span></span>
+          </button>
+          <button type="button" class="live-icon-btn live-tv-btn" id="live-tv" title="Show on a TV or another phone"><span class="live-sync-dot idle"></span>TV</button>
+          <button type="button" class="live-icon-btn" id="live-edit-lineup" title="Edit lineup">✎ Lineup</button>
+          <button type="button" class="live-icon-btn live-danger" id="live-discard" title="Discard game">✕ Discard</button>
+        </div>
+      </section>
+
+      <!-- 3. Game over -->
+      <section id="live-final" style="display:none">
+        <div class="live-hero" id="live-hero">
+          <canvas class="live-confetti" id="live-confetti" aria-hidden="true"></canvas>
+          <div class="live-hero-kicker"><span aria-hidden="true">🏆</span> Game over</div>
+          <div class="live-hero-names" id="live-final-title"></div>
+          <div class="live-hero-score" id="live-final-score"></div>
+          <div class="live-hero-badge" id="live-final-badge"></div>
+        </div>
+
+        <div class="live-stat-grid" id="live-final-sub"></div>
+
+        <div class="live-final-card">
+          <div class="live-final-card-title">Serving</div>
+          <div class="live-serve-bars" id="live-final-stats"></div>
+          <div class="live-final-runs" id="live-final-runs"></div>
+        </div>
+
+        <button type="button" class="primary btn" id="live-save">Save to league</button>
+        <div id="live-save-status" class="status" style="display:none"></div>
+        <button type="button" class="picker-clear" id="live-final-undo">↶ Undo last rally</button>
+        <button type="button" class="live-tv-link" id="live-tv-final"><span class="live-sync-dot idle"></span>TV link</button>
+
+        <div class="post-game-actions live-after-save" id="live-after-save" style="display:none">
+          <button type="button" class="quick-action" id="live-rematch"><span>↻</span>Rematch</button>
+          <button type="button" class="quick-action" id="live-swap-rematch"><span>⇄</span>Swap sides</button>
+          <button type="button" class="quick-action" id="live-new-game"><span>＋</span>New game</button>
+        </div>
+      </section>
+    </div>
+
+    <div class="live-share" id="live-share" hidden>
+      <div class="live-share-backdrop" data-close></div>
+      <div class="live-share-card" role="dialog" aria-modal="true" aria-labelledby="live-share-title">
+        <div class="live-share-grip" aria-hidden="true"></div>
+        <h2 id="live-share-title">Show this game on a TV</h2>
+        <p class="live-share-sub">Open this link on a TV browser, a laptop hooked to a screen, or anyone's phone. It follows every tap on its own. No login needed.</p>
+        <div class="live-share-qr" id="live-share-qr"></div>
+        <div class="live-share-link">
+          <input type="text" id="live-share-url" readonly aria-label="Live game link" />
+          <button type="button" id="live-share-copy">Copy</button>
+        </div>
+        <div class="live-share-actions">
+          <button type="button" class="live-icon-btn" id="live-share-native">Share…</button>
+          <a class="live-icon-btn" id="live-share-open" target="_blank" rel="noopener">Open viewer ↗</a>
+        </div>
+        <label class="live-share-toggle"><input type="checkbox" id="live-broadcast-toggle" checked /> Broadcast games from this phone</label>
+        <div class="live-share-status" id="live-share-status"></div>
+        <button type="button" class="primary btn" data-close>Done</button>
+      </div>
+    </div>
+  </main>
+
+  <nav class="tab-bar">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 5h2a2 2 0 0 1-2 2M7 5H5a2 2 0 0 0 2 2M7 3h10v6a5 5 0 0 1-10 0V3Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Leaderboard
+    </a>
+    <a href="log-game.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+      Log Game
+    </a>
+    <a href="live-game.html" class="active">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Live
+    </a>
+    <a href="history.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      History
+    </a>
+    <a href="players.html">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6M16 8a3 3 0 1 0 0-6M22 20c0-2.7-2-5-5-5.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Players
+    </a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/live-score.js"></script>
+  <script src="js/vendor/qrcode.min.js"></script>
+  <script src="js/live-render.js"></script>
+  <script src="js/live-game.js"></script>
+</body>
+</html>

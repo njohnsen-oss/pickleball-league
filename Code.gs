@@ -210,6 +210,8 @@ function doGet(e) {
       result = getCalibrationRecommendations();
     } else if (action === 'getGameRallies') {
       result = getGameRallies(e.parameter.gameId);
+    } else if (action === 'getLive') {
+      result = getLive(e.parameter.since);
     } else {
       return jsonOutput({ error: 'Unknown action: ' + action });
     }
@@ -220,6 +222,18 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // Live display updates skip the script lock: they only touch CacheService
+  // (last write wins) and must never queue behind a slow logGame recompute.
+  var fastBody = null;
+  try { fastBody = JSON.parse(e.postData.contents); } catch (parseErr) { fastBody = null; }
+  if (fastBody && fastBody.action === 'pushLive') {
+    try {
+      checkPasscode(fastBody.passcode);
+      return jsonOutput(pushLive(fastBody.live));
+    } catch (err) {
+      return jsonOutput({ error: err.message });
+    }
+  }
   var lock = LockService.getScriptLock();
   lock.waitLock(30000);
   try {
@@ -1066,4 +1080,58 @@ function deleteGame(passcode, gameId) {
   recomputeAllStats();
 
   return { deleted: { GameId: gameId }, leaderboard: getLeaderboard() };
+}
+
+// ---- Live display (TV / spectator view) ----
+//
+// The scorer's phone pushes the whole in-progress game (setup + event list)
+// after every tap; live-view.html asks getLive and replays it with the same
+// js/live-score.js engine, so the TV shows exactly what the scorer sees. It
+// lives in CacheService, not the Sheet: it's throwaway state, reads are fast,
+// and it expires on its own (6 hours is CacheService's maximum). One slot for
+// the whole league; the most recent push wins.
+//
+// Speed: getLive?since=<version> is a long poll. If nothing has changed since
+// that version it waits here (checking the small version key every
+// LIVE_WAIT_STEP_MS) for up to LIVE_WAIT_MAX_MS and answers the moment a push
+// lands, so the TV updates about one round trip after the tap instead of
+// waiting for its next poll. Without `since` it answers immediately.
+var LIVE_CACHE_KEY = 'liveGame';
+var LIVE_VERSION_KEY = 'liveGameVersion';
+var LIVE_CACHE_SECONDS = 21600;
+var LIVE_MAX_CHARS = 90000; // CacheService values cap at 100KB
+var LIVE_WAIT_MAX_MS = 5000;
+var LIVE_WAIT_STEP_MS = 150;
+
+function getLive(since) {
+  var cache = CacheService.getScriptCache();
+  if (since) {
+    var waited = 0;
+    while ((cache.get(LIVE_VERSION_KEY) || 'none') === since && waited < LIVE_WAIT_MAX_MS) {
+      Utilities.sleep(LIVE_WAIT_STEP_MS);
+      waited += LIVE_WAIT_STEP_MS;
+    }
+  }
+  var raw = cache.get(LIVE_CACHE_KEY);
+  return raw ? JSON.parse(raw) : { live: null, updatedAt: null, version: 'none' };
+}
+
+// `live` = { requestId, setup, events, saved } from the Live Game page, or
+// null when the scorer discards a game (clears the TV).
+function pushLive(live) {
+  var cache = CacheService.getScriptCache();
+  if (!live) {
+    cache.removeAll([LIVE_CACHE_KEY, LIVE_VERSION_KEY]);
+    return { ok: true, cleared: true };
+  }
+  if (!live.setup || !Array.isArray(live.events)) throw new Error('Live update is missing the game setup or events');
+  var now = new Date();
+  var version = now.getTime() + '-' + Math.floor(Math.random() * 1e6);
+  var payload = JSON.stringify({ live: live, updatedAt: now.toISOString(), version: version });
+  if (payload.length > LIVE_MAX_CHARS) throw new Error('Live update is too large to share');
+  var values = {};
+  values[LIVE_CACHE_KEY] = payload;
+  values[LIVE_VERSION_KEY] = version;
+  cache.putAll(values, LIVE_CACHE_SECONDS);
+  return { ok: true, version: version };
 }
