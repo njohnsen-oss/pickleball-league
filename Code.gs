@@ -1106,10 +1106,10 @@ var LIVE_WAIT_STEP_MS = 150;
 function getLive(since) {
   var cache = CacheService.getScriptCache();
   if (since) {
-    var waited = 0;
-    while ((cache.get(LIVE_VERSION_KEY) || 'none') === since && waited < LIVE_WAIT_MAX_MS) {
+    // Wall-clock budget (each cache read takes time too, so counting sleeps alone overshoots).
+    var waitStart = Date.now();
+    while ((cache.get(LIVE_VERSION_KEY) || 'none') === since && Date.now() - waitStart < LIVE_WAIT_MAX_MS) {
       Utilities.sleep(LIVE_WAIT_STEP_MS);
-      waited += LIVE_WAIT_STEP_MS;
     }
   }
   var raw = cache.get(LIVE_CACHE_KEY);
