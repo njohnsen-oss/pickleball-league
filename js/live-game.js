@@ -18,6 +18,14 @@ let roster = [];
 let draft = { format: 'Doubles', slots: { a1: '', a2: '', b1: '', b2: '' }, firstServingSide: 'A', target: LIVE_DEFAULT_TARGET };
 let game = null; // { setup, events, requestId, saved: null | { gameId, deltaA, deltaB } }
 let lastTapAt = 0;
+// After Start, Point/Fault wait for the TV's 1.2s start animation: the TV gets
+// the new game about one round trip after the broadcast lands, so the hold
+// ends START_HOLD_AFTER_PUSH_MS after that push succeeds (or START_HOLD_MS if
+// nothing is broadcasting), never longer than START_HOLD_MAX_MS.
+const START_HOLD_MS = 1300;
+const START_HOLD_AFTER_PUSH_MS = 1500;
+const START_HOLD_MAX_MS = 4500;
+let startHold = null; // { until, startedAt, waitingForPush }
 let clockTimer = null;
 let wakeLock = null;
 
@@ -198,8 +206,26 @@ function startGame() {
     saved: null,
   };
   storeGame();
+  const now = Date.now();
+  startHold = { startedAt: now, until: now + (broadcastEnabled() ? START_HOLD_MAX_MS : START_HOLD_MS), waitingForPush: broadcastEnabled() };
   render();
   broadcastGame();
+  tickStartHold();
+}
+
+function startHoldActive() {
+  return Boolean(startHold && Date.now() < startHold.until && game && !game.events.length);
+}
+
+// Shows "Get ready" with a fill bar on Point/Fault while the TV animation plays.
+function tickStartHold() {
+  const active = startHoldActive();
+  ['live-point', 'live-fault'].forEach((id) => $(id).classList.toggle('on-hold', active));
+  const total = startHold ? startHold.until - startHold.startedAt : 1;
+  const left = startHold ? Math.max(0, startHold.until - Date.now()) : 0;
+  document.querySelectorAll('.live-hold-fill').forEach((el) => { el.style.width = (100 - (left / total) * 100).toFixed(1) + '%'; });
+  if (active) requestAnimationFrame(tickStartHold);
+  else { startHold = null; ['live-point', 'live-fault'].forEach((id) => $(id).classList.remove('on-hold')); }
 }
 
 // ---------- scoring screen ----------
@@ -223,6 +249,7 @@ function showToast(text, side) {
 function tap(result) {
   const now = Date.now();
   if (now - lastTapAt < TAP_GUARD_MS) return;
+  if (startHoldActive()) return;
   lastTapAt = now;
   if (!game || game.saved) return;
   const before = replayLiveGame(game.setup, game.events);
@@ -466,6 +493,10 @@ async function broadcastGame() {
     broadcast.ms = Math.round(performance.now() - started);
     broadcast.okAt = Date.now();
     broadcast.failures = 0;
+    if (startHold && startHold.waitingForPush) {
+      startHold.waitingForPush = false;
+      startHold.until = Math.min(startHold.startedAt + START_HOLD_MAX_MS, Math.max(startHold.startedAt + START_HOLD_MS, broadcast.okAt + START_HOLD_AFTER_PUSH_MS));
+    }
     broadcast.error = '';
     setBroadcastStatus('ok');
   } catch (err) {

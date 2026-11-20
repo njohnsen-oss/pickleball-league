@@ -119,8 +119,11 @@ function render() {
   } else {
     const state = replayLiveGame(live.setup, live.events);
     if (!state.over) {
+      const fromIdle = screen === 'waiting' || screen === 'final';
+      const isNewGame = !shown || shown.requestId !== live.requestId;
       setScreen('live');
       renderLive(live, state);
+      if (fromIdle && isNewGame) playStartTransition();
     } else if (!snapshot.updatedAt || Date.now() - snapshot.updatedAt < VIEW_FINAL_HOLD_MS) {
       setScreen('final');
       renderFinal(live, state);
@@ -333,6 +336,75 @@ function renderSync() {
     const mode = longPollWorks && snapshot && snapshot.version ? 'Live link' : `${(median / 1000).toFixed(1)}s refresh`;
     $('tv-sync-text').textContent = `Connected · ${mode}${change}`;
   }
+}
+
+// ---------- game-start transition (TV) ----------
+//
+// Plays when the TV goes from standby (or a finished game) to a new game, not
+// when someone opens the link mid-game. 1.2s total, drawn over the already
+// rendered scoreboard:
+//   0-250ms    paddle sweeps in from the bottom right and strikes the ball
+//   250-450ms  paddle follows through and recoils
+//   250-800ms  ball flies at the camera (scale 1 -> 50) with a ghost trail
+//   700-950ms  neon covers the screen
+//   950-1200ms neon fades away to reveal the live game
+function playStartTransition() {
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.querySelectorAll('.tv-intro').forEach((el) => el.remove());
+  // Keep the standby screen up until the neon covers everything, then swap.
+  tv.classList.add('intro-hold');
+  setTimeout(() => tv.classList.remove('intro-hold'), 1200 * 0.72);
+  const W = window.innerWidth, H = window.innerHeight;
+  const layer = document.createElement('div');
+  layer.className = 'tv-intro';
+  const ballHtml = pickleballSvg();
+  layer.innerHTML = '<div class="tv-intro-paddle">' + paddleSvg() + '</div>'
+    + [3, 2, 1].map((n) => `<div class="tv-intro-ball ghost g${n}">${ballHtml}</div>`).join('')
+    + `<div class="tv-intro-ball">${ballHtml}</div>`
+    + '<div class="tv-intro-flood"></div>';
+  document.body.appendChild(layer);
+
+  const T = 1200;
+  const b = Math.round(Math.min(W, H) * 0.09);
+  const hitX = W * 0.58, hitY = H * 0.52; // where paddle meets ball
+  const pH = Math.round(H * 0.68), pW = Math.round(pH * 135 / 300);
+  const paddle = layer.querySelector('.tv-intro-paddle');
+  Object.assign(paddle.style, { width: pW + 'px', height: pH + 'px', left: (hitX - pW * 0.5) + 'px', top: (hitY - pH * (90 / 300)) + 'px' });
+  // Pivot at the grip, like a wrist swing.
+  paddle.style.transformOrigin = `50% ${(280 / 300) * 100}%`;
+  paddle.animate([
+    { offset: 0, transform: `translate(${W * 0.45}px, ${H * 0.7}px) rotate(-55deg)`, easing: 'cubic-bezier(0.2, 0.8, 0.3, 1)' },
+    { offset: 0.21, transform: 'translate(0, 0) rotate(6deg)', easing: 'cubic-bezier(0.3, 0, 0.3, 1)' }, // contact, slight overshoot
+    { offset: 0.3, transform: `translate(${-W * 0.02}px, ${-H * 0.01}px) rotate(14deg)`, easing: 'cubic-bezier(0.4, 0, 0.6, 1)' }, // follow-through
+    { offset: 0.38, transform: 'translate(0, 0) rotate(-3deg)', easing: 'ease-out' }, // recoil
+    { offset: 0.6, transform: `translate(${W * 0.2}px, ${H * 0.5}px) rotate(20deg)`, opacity: 1, easing: 'ease-in' },
+    { offset: 0.75, transform: `translate(${W * 0.35}px, ${H * 0.8}px) rotate(30deg)`, opacity: 0 },
+    { offset: 1, opacity: 0 },
+  ], { duration: T, fill: 'forwards' });
+
+  // Ball: waits at the contact point, then flies at the camera toward the center.
+  const ballFrames = [
+    { offset: 0, transform: `translate(${hitX - b / 2}px, ${hitY - b / 2}px) scale(1) rotate(0deg)`, opacity: 0 },
+    { offset: 0.08, opacity: 1 },
+    { offset: 0.21, transform: `translate(${hitX - b / 2}px, ${hitY - b / 2}px) scale(1) rotate(0deg)`, easing: 'cubic-bezier(0.55, 0, 1, 0.45)' },
+    { offset: 0.67, transform: `translate(${W / 2 - b / 2}px, ${H / 2 - b / 2}px) scale(50) rotate(320deg)`, opacity: 1 },
+    { offset: 0.8, transform: `translate(${W / 2 - b / 2}px, ${H / 2 - b / 2}px) scale(50) rotate(340deg)`, opacity: 0 },
+    { offset: 1, opacity: 0 },
+  ];
+  layer.querySelectorAll('.tv-intro-ball').forEach((el) => {
+    el.style.width = el.style.height = b + 'px';
+    const ghost = el.classList.contains('ghost') ? Number(el.className.match(/g(\d)/)[1]) : 0;
+    const k = [1, 0.45, 0.25, 0.12][ghost]; // ghosts trail behind, fainter, as a motion blur
+    el.animate(ballFrames.map((fr) => (fr.opacity == null ? fr : { ...fr, opacity: fr.opacity * k })), { duration: T, delay: ghost * 28, fill: 'both' });
+  });
+
+  layer.querySelector('.tv-intro-flood').animate([
+    { offset: 0, opacity: 0 }, { offset: 0.58, opacity: 0 },
+    { offset: 0.7, opacity: 1 }, { offset: 0.79, opacity: 1, easing: 'ease-in-out' },
+    { offset: 1, opacity: 0 },
+  ], { duration: T, fill: 'forwards' });
+
+  setTimeout(() => layer.remove(), T + 80);
 }
 
 // ---------- TV niceties ----------

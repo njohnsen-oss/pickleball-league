@@ -251,6 +251,40 @@ function playFaultAnimation(courtHost, prev, next, opts = {}) {
   }, T);
 }
 
+// ---------- the paddle ----------
+//
+// An original paddle for the game-start transition, in the modern elongated
+// style: tall face with rounded top corners and squarer bottom, thin neon edge
+// guard, black carbon-weave face, long black wrapped grip with a flared butt.
+// Proportioned like a standard elongated paddle (face ~41% as wide as the
+// paddle is long). viewBox 0 0 135 300, sweet spot around (67.5, 90).
+function paddleSvg(opts = {}) {
+  const id = 'pd' + (pbUid += 1);
+  const neon = '#C9F23C';
+  const face = 'M40 7H95C116 7 129 21 129 42V168C129 187 116 201 97 201H38C19 201 6 187 6 168V42C6 21 19 7 40 7Z';
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="paddle${opts.className ? ' ' + opts.className : ''}" viewBox="0 0 135 300" aria-hidden="true">`
+    + '<defs>'
+    // carbon weave: offset chevron rows
+    + `<pattern id="${id}w" width="12" height="9" patternUnits="userSpaceOnUse" patternTransform="rotate(-28)"><rect width="12" height="9" fill="#141619"/><path d="M0 6L3 3L6 6L9 3L12 6" fill="none" stroke="#24282E" stroke-width="2"/><path d="M0 8.6L3 5.6L6 8.6L9 5.6L12 8.6" fill="none" stroke="#0D0F11" stroke-width="0.7"/></pattern>`
+    + `<linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.14"/><stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0"/><stop offset="1" stop-color="#000000" stop-opacity="0.3"/></linearGradient>`
+    + `<linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#08090B"/><stop offset="0.5" stop-color="#26292E"/><stop offset="1" stop-color="#08090B"/></linearGradient>`
+    + '</defs>'
+    // grip with a flared butt, then a neon collar where the grip meets the face
+    + `<rect x="55" y="206" width="25" height="78" rx="5" fill="url(#${id}g)"/>`
+    + '<g stroke="#000" stroke-opacity="0.6" stroke-width="1.5">' + [222, 232, 242, 252, 262, 272].map((y) => `<line x1="56" y1="${y}" x2="79" y2="${y - 6}"/>`).join('') + '</g>'
+    + '<path d="M54 281H81L85 292C85 295 83 297 80 297H55C52 297 50 295 50 292Z" fill="#111317"/>'
+    + `<path d="M50 197H85L81 214H54Z" fill="${neon}"/>`
+    + '<path d="M53 205H82" stroke="#0E0F12" stroke-opacity="0.55" stroke-width="2" stroke-dasharray="4 3"/>'
+    // face: weave, sheen, a thin neon pinstripe, a small blank plate at the top, edge guard
+    + `<path d="${face}" fill="url(#${id}w)"/>`
+    + `<path d="${face}" fill="url(#${id}s)"/>`
+    + `<path d="M19 48V164" stroke="${neon}" stroke-opacity="0.45" stroke-width="1.2" stroke-linecap="round"/>`
+    + '<rect x="57.5" y="15" width="20" height="9" rx="2" fill="#2A2E35" stroke="#3A3F47" stroke-width="0.8"/>'
+    + `<path d="${face}" fill="none" stroke="${neon}" stroke-width="6.5"/>`
+    + `<path d="${face}" fill="none" stroke="#000" stroke-opacity="0.3" stroke-width="1" transform="translate(0 0.8)"/>`
+    + '</svg>';
+}
+
 // What one rally did, for the scorer's Undo label and the TV's rally feed.
 function liveRallyKind(rally, nextServingSide, doubles) {
   if (rally.result === 'Point') return 'point';
