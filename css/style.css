@@ -2302,3 +2302,11 @@ body.tv-page { padding-left: 0; }
   .tv-flash.show { opacity: 1; transform: translate(-50%, -50%); }
   .tv-chance-bar i { transition: none; }
 }
+
+/* ---- Fault animation on the court (playFaultAnimation in js/live-render.js) ---- */
+.live-svg-ball { transition: opacity 0.18s; }
+.fx-hide-ball .live-svg-ball { opacity: 0; transition: none; }
+.fx-fault { pointer-events: none; }
+.fx-ball, .fx-shadow, .fx-ball-spin { transform-box: view-box; transform-origin: 0 0; }
+.fx-shadow { fill: #0E125B; opacity: 0.5; }
+.fx-ball .pb-ball { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
