@@ -1,6 +1,6 @@
 // Drawing helpers shared by the Live Game scorer (live-game.js) and the TV /
-// spectator view (live-view.js): names, the court diagram, confetti, the
-// share link and its QR code. No state and no network here.
+// spectator view (live-view.js): names, the pickleball, the court diagram,
+// confetti, the share link and its QR code. No state and no network here.
 
 function escapeHtml(value) {
   return String(value == null ? '' : value)
@@ -46,7 +46,7 @@ function courtSvg(state) {
       players += `<g class="live-player side-${side.toLowerCase()}${serving ? ' serving' : ''}" transform="translate(${x} ${y})">`
         + `<circle r="17"></circle><text class="live-player-initials" y="4.5">${escapeHtml(initials(name))}</text>`
         + `<text class="live-player-name" y="31">${escapeHtml(firstName(name))}</text>`
-        + (serving ? '<g class="live-svg-ball" transform="translate(15 -14)"><circle r="6.5"></circle><circle class="hole" cx="-2" cy="-1.6" r="1.1"></circle><circle class="hole" cx="2.2" cy="-0.6" r="1.1"></circle><circle class="hole" cx="-0.4" cy="2.4" r="1.1"></circle></g>' : '')
+        + (serving ? '<g class="live-svg-ball" transform="translate(15 -14)">' + pickleballSvg({ x: -8, y: -8, size: 16, simple: true }) + '</g>' : '')
         + '</g>';
     });
   });
@@ -62,6 +62,94 @@ function courtSvg(state) {
     + players
     + '</svg>';
 }
+
+// ---------- the pickleball ----------
+//
+// One drawing for every ball in the app (icons, the court, the TV, the
+// animations): a neon outdoor-style ball with 26 holes spread evenly over a
+// sphere. Holes are projected from 3D, so ones near the edge foreshorten into
+// thin ellipses and the ball can genuinely spin or roll by changing rx/ry/rz.
+// Light comes from the upper left for the holes (dark inner wall at top-left,
+// bright lip at bottom-right) with a soft highlight on the upper right.
+
+const PB_HOLES = (() => {
+  const n = 26, pts = [], golden = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i += 1) {
+    const y = 1 - (2 * (i + 0.5)) / n;
+    const r = Math.sqrt(1 - y * y);
+    const t = golden * i;
+    pts.push([Math.cos(t) * r, y, Math.sin(t) * r]);
+  }
+  return pts;
+})();
+
+function pbRotate(p, ax, ay, az) {
+  let [x, y, z] = p;
+  let c = Math.cos(ax), s = Math.sin(ax); [y, z] = [y * c - z * s, y * s + z * c];
+  c = Math.cos(ay); s = Math.sin(ay); [x, z] = [x * c + z * s, -x * s + z * c];
+  c = Math.cos(az); s = Math.sin(az); [x, y] = [x * c - y * s, x * s + y * c];
+  return [x, y, z];
+}
+
+let pbUid = 0;
+
+// The ball as inline SVG markup (viewBox 0 0 100 100). opts:
+//   size       width/height attribute (omit to size it with CSS)
+//   x, y       position when nesting inside another SVG (e.g. the court)
+//   rx, ry, rz extra rotation in radians, for spinning/rolling it in animations
+//   simple     slightly bigger holes so tiny icons still read as a pickleball
+//   className  extra class on the <svg>
+// The holes sit in <g class="pb-holes"> under fixed shading, so CSS can spin
+// that group while the light stays put.
+function pickleballSvg(opts = {}) {
+  const id = 'pb' + (pbUid += 1);
+  const R = 48, C = 50;
+  const holeAng = opts.simple ? 0.2 : 0.165;
+  const pts = PB_HOLES;
+  const o = opts.base || [0.4, 1.1, 0.2];
+  const rx = (opts.rx || 0) + o[0], ry = (opts.ry || 0) + o[1], rz = (opts.rz || 0) + o[2];
+  let halos = '', lips = '', holes = '';
+  const f = (v) => v.toFixed(2);
+  pts.forEach((p0) => {
+    const [x, y, z] = pbRotate(p0, rx, ry, rz);
+    if (z < 0.12) return; // back of the ball, or too edge-on to see
+    const cx = C + R * x, cy = C - R * y;
+    const major = R * Math.sin(holeAng);
+    const minor = major * z;
+    const deg = (Math.atan2(-y, x) * 180) / Math.PI + 90; // minor axis points at the center
+    const arc = (dx, dy, k = 1) => {
+      const a = (deg * Math.PI) / 180, ex = Math.cos(a) * major * k, ey = Math.sin(a) * major * k;
+      const X = cx + dx, Y = cy + dy;
+      return `M${f(X + ex)} ${f(Y + ey)}A${f(major * k)} ${f(minor * k)} ${f(deg)} 1 0 ${f(X - ex)} ${f(Y - ey)}A${f(major * k)} ${f(minor * k)} ${f(deg)} 1 0 ${f(X + ex)} ${f(Y + ey)}Z`;
+    };
+    if (z > 0.35) {
+      // Countersink: a soft shadow on the upper-left rim, a bright lip on the lower-right rim.
+      halos += arc(-major * 0.07 * z, -major * 0.07 * z, 1.12);
+      lips += arc(major * 0.08 * z, major * 0.09 * z, 1.07);
+    }
+    holes += arc(0, 0);
+  });
+  const size = (opts.size ? ` width="${opts.size}" height="${opts.size}"` : '')
+    + (opts.x != null ? ` x="${opts.x}" y="${opts.y}"` : '');
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="pb-ball${opts.className ? ' ' + opts.className : ''}" viewBox="0 0 100 100"${size} aria-hidden="true">`
+    + '<defs>'
+    + `<radialGradient id="${id}b" cx="0.62" cy="0.3" r="0.85"><stop offset="0" stop-color="#EEEC4E"/><stop offset="0.6" stop-color="#E2E43C"/><stop offset="0.9" stop-color="#D3D736"/><stop offset="1" stop-color="#ADB228"/></radialGradient>`
+    + `<linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5D610B"/><stop offset="0.6" stop-color="#7C8116"/><stop offset="1" stop-color="#ABAF2D"/></linearGradient>`
+    + `<radialGradient id="${id}s" cx="0.5" cy="0.5" r="0.5"><stop offset="0.8" stop-color="#464A00" stop-opacity="0"/><stop offset="1" stop-color="#464A00" stop-opacity="0.3"/></radialGradient>`
+    + `<radialGradient id="${id}g" cx="0.7" cy="0.24" r="0.24"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.15"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>`
+    + '</defs>'
+    + `<circle cx="${C}" cy="${C}" r="${R}" fill="url(#${id}b)"/>`
+    + `<g class="pb-holes"><path d="${halos}" fill="#959A1E" fill-opacity="0.45"/><path d="${lips}" fill="#F7F48C" fill-opacity="0.75"/><path d="${holes}" fill="url(#${id}h)"/></g>`
+    + `<circle cx="${C}" cy="${C}" r="${R}" fill="url(#${id}s)"/>`
+    + `<circle cx="${C}" cy="${C}" r="${R}" fill="url(#${id}g)"/>`
+    + '</svg>';
+}
+// The CSS ball icon (.live-ball-icon) reads this, so badges and buttons use
+// the same drawing without a separate image file.
+function pickleballDataUri() {
+  return 'url("data:image/svg+xml,' + encodeURIComponent(pickleballSvg({ simple: true })) + '")';
+}
+if (typeof document !== 'undefined') document.documentElement.style.setProperty('--pb-ball', pickleballDataUri());
 
 // What one rally did, for the scorer's Undo label and the TV's rally feed.
 function liveRallyKind(rally, nextServingSide, doubles) {

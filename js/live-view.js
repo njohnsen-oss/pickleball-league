@@ -365,6 +365,8 @@ document.addEventListener('visibilitychange', () => {
   else { clearTimeout(pollTimer); pollTimer = null; }
 });
 
+document.querySelector('.tv-ball').innerHTML = pickleballSvg();
+
 // QR codes point at this same page (with ?api= so a fresh phone lands here).
 const qr = qrSvg(liveViewUrl());
 $('tv-qr-wait').innerHTML = qr;
