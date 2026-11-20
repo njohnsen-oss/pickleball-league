@@ -2329,3 +2329,13 @@ body.tv-page { padding-left: 0; }
 .live-btn.on-hold { pointer-events: none; }
 .live-hold-bar { width: 60%; height: 6px; border-radius: 6px; background: rgba(127, 127, 127, 0.25); overflow: hidden; }
 .live-hold-fill { display: block; height: 100%; width: 0; background: var(--horizon); }
+
+/* ---- Side switch on the court (animateCourtMoves in js/live-render.js) ---- */
+.live-serve-path { transition: opacity 0.25s; }
+.fx-swapping .live-serve-path { opacity: 0; transition: none; }
+.fx-spark { pointer-events: none; }
+.fx-spark-flash { fill: #FFF6C9; transform-box: fill-box; transform-origin: center; }
+.fx-spark-dot { transform-box: view-box; transform-origin: 0 0; }
+.fx-paddle { pointer-events: none; }
+.fx-paddle-swing { transform-box: view-box; transform-origin: 0 0; }
+.fx-paddle .paddle { overflow: visible; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.45)); }
