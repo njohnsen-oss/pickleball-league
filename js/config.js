@@ -1,9 +1,15 @@
-// Resolves the Apps Script Web App URL at runtime instead of hardcoding it:
+// Resolves the Apps Script Web App URL at runtime:
 // 1. A `?api=` query param (so a bookmarked link carries the URL with it)
 // 2. Otherwise, whatever was saved in this browser's localStorage last time
-// 3. Otherwise, null — the page below redirects to settings.html to set one
+// 3. Otherwise, the league's own backend (DEFAULT_API_URL), so the plain site
+//    link just works for new visitors. The Settings page can still point a
+//    browser somewhere else (e.g. the TEST sheet's deployment).
+//
+// The URL is not a secret: every visitor's browser calls it anyway, and every
+// change still needs the admin passcode (Script Properties > ADMIN_PASSCODE).
 
 const API_STORAGE_KEY = 'pickleballApiUrl';
+const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycby4AkdoS5sUBVfoRsmD1oiY-SwxYwbqsA3NgEvfsmVCDAK1oFNXjHRRm_6bjV-dA3QA/exec';
 
 // Shown in the banner at the top of every page until the real league name
 // (set via the Settings page, stored server-side as a Script Property so
@@ -20,6 +26,8 @@ function resolveApiUrl() {
   } else {
     url = localStorage.getItem(API_STORAGE_KEY);
   }
+
+  if (!url) return DEFAULT_API_URL; // clean link, nothing to carry in the URL
 
   if (url) {
     params.set('api', url);
