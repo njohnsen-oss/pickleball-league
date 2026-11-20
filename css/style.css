@@ -1650,17 +1650,15 @@ a.btn {
 .live-dot.side-a { background: var(--team-a); }
 .live-dot.side-b { background: var(--team-b); }
 
+/* The ball image comes from pickleballSvg() in js/live-render.js (--pb-ball);
+   the flat yellow ball is only a fallback if that script didn't run. */
 .live-ball-icon {
   width: 14px;
   height: 14px;
   flex: none;
   display: inline-block;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 35% 35%, var(--midnight) 0 1.2px, transparent 1.6px),
-    radial-gradient(circle at 68% 42%, var(--midnight) 0 1.2px, transparent 1.6px),
-    radial-gradient(circle at 48% 70%, var(--midnight) 0 1.2px, transparent 1.6px),
-    var(--horizon);
+  background: var(--pb-ball, radial-gradient(circle at 40% 35%, #EEEC4E, #C9CD34)) center / contain no-repeat;
 }
 
 /* ---- Setup ---- */
@@ -1860,8 +1858,7 @@ body.live-in-progress main { padding-top: 10px; }
 .live-player.serving > circle { stroke: var(--horizon); stroke-width: 3.5; }
 .live-player-initials { fill: #fff; font-size: 12px; font-weight: 800; text-anchor: middle; }
 .live-player-name { fill: #fff; font-size: 11px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(14, 18, 91, 0.45); stroke-width: 3px; }
-.live-svg-ball circle { fill: var(--horizon); stroke: var(--midnight); stroke-width: 1; }
-.live-svg-ball circle.hole { fill: var(--midnight); stroke: none; }
+.live-svg-ball .pb-ball { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
 
 .live-toast {
   position: absolute;
@@ -2209,15 +2206,13 @@ body.tv-page { padding-left: 0; }
 .tv-waiting p { margin: 0; max-width: 34em; font-size: clamp(14px, 2.6vmin, 32px); opacity: 0.78; line-height: 1.4; }
 .tv-bounce { position: relative; width: clamp(56px, 11vmin, 140px); aspect-ratio: 1 / 1.9; }
 .tv-ball {
-  position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1; border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 30%, rgba(14, 18, 91, 0.55) 0 5%, transparent 6.5%),
-    radial-gradient(circle at 66% 38%, rgba(14, 18, 91, 0.55) 0 5%, transparent 6.5%),
-    radial-gradient(circle at 46% 66%, rgba(14, 18, 91, 0.55) 0 5%, transparent 6.5%),
-    radial-gradient(circle at 74% 72%, rgba(14, 18, 91, 0.55) 0 5%, transparent 6.5%),
-    radial-gradient(circle at 30% 28%, #FFE7A6, var(--horizon) 55%, #D99000);
+  position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1;
   animation: tv-ball 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
 }
+.tv-ball .pb-ball { display: block; width: 100%; height: 100%; }
+/* Spin the holes under fixed lighting so the ball rolls instead of the whole picture turning. */
+.tv-ball .pb-holes { transform-box: view-box; transform-origin: 50% 50%; animation: pb-spin 2.6s linear infinite; }
+@keyframes pb-spin { to { transform: rotate(360deg); } }
 .tv-shadow { position: absolute; bottom: 0; left: 18%; width: 64%; height: 9%; border-radius: 50%; background: rgba(0, 0, 0, 0.4); animation: tv-shadow 1.1s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate; }
 .tv-qr-card { display: flex; align-items: center; gap: 1em; padding: 0.8em 1.1em; border-radius: 1em; background: rgba(255, 255, 255, 0.08); font-size: clamp(13px, 2.2vmin, 28px); font-weight: 700; text-align: left; line-height: 1.3; }
 .tv-qr-card .tv-qr { width: clamp(90px, 16vmin, 220px); }
@@ -2268,7 +2263,7 @@ body.tv-page { padding-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tv-pill.live i, .tv-score.bump, .tv-team.scored::after, .tv-gamepoint, .tv-flash.show, .tv-feed li.new, .tv-ball, .tv-shadow { animation: none; }
+  .tv-pill.live i, .tv-score.bump, .tv-team.scored::after, .tv-gamepoint, .tv-flash.show, .tv-feed li.new, .tv-ball, .tv-shadow, .tv-ball .pb-holes { animation: none; }
   .tv-flash.show { opacity: 1; transform: translate(-50%, -50%); }
   .tv-chance-bar i { transition: none; }
 }
