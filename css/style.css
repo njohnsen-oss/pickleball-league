@@ -2310,3 +2310,22 @@ body.tv-page { padding-left: 0; }
 .fx-ball, .fx-shadow, .fx-ball-spin { transform-box: view-box; transform-origin: 0 0; }
 .fx-shadow { fill: #0E125B; opacity: 0.5; }
 .fx-ball .pb-ball { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
+
+/* ---- Game-start transition on the TV (playStartTransition in js/live-view.js) ---- */
+.tv-intro { position: fixed; inset: 0; z-index: 50; pointer-events: none; overflow: hidden; }
+.tv-intro-paddle { position: absolute; will-change: transform; filter: drop-shadow(0 1.5vmin 3vmin rgba(0, 0, 0, 0.45)); }
+.tv-intro-paddle .paddle { display: block; width: 100%; height: 100%; }
+.tv-intro-ball { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform, opacity; }
+.tv-intro-ball .pb-ball { display: block; width: 100%; height: 100%; }
+.tv-intro-flood { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 50%, #EEEC4E, #DDE03C 60%, #C9CE33); }
+.tv.intro-hold[data-screen="live"] .tv-live { display: none; }
+.tv.intro-hold[data-screen="live"] .tv-waiting { display: flex; }
+.tv.intro-hold .tv-rally { visibility: hidden; }
+
+/* Point/Fault wait while the TV plays its game-start animation. */
+.live-btn { position: relative; }
+.live-hold { display: none; position: absolute; inset: 0; z-index: 1; border-radius: inherit; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: inherit; font-weight: 800; }
+.live-btn.on-hold .live-hold { display: flex; }
+.live-btn.on-hold { pointer-events: none; }
+.live-hold-bar { width: 60%; height: 6px; border-radius: 6px; background: rgba(127, 127, 127, 0.25); overflow: hidden; }
+.live-hold-fill { display: block; height: 100%; width: 0; background: var(--horizon); }
