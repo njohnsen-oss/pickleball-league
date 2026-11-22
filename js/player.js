@@ -105,7 +105,7 @@ function drawEloChart(points) {
   // hover tooltip or the games table below.
   const lastX = xAt(n - 1);
   const lastY = yAt(points[n - 1].elo);
-  svg.appendChild(svgEl('circle', { cx: lastX, cy: lastY, r: 5, fill: 'var(--accent)', stroke: 'var(--surface)', 'stroke-width': 2 }));
+  svg.appendChild(svgEl('circle', { cx: lastX, cy: lastY, r: 5, fill: 'var(--neon, var(--accent))', stroke: 'var(--surface)', 'stroke-width': 2 }));
   const endLabel = svgEl('text', { x: lastX + 10, y: lastY + 4, 'font-size': 13, 'font-weight': 700, fill: 'var(--text)' });
   endLabel.textContent = String(Math.round(points[n - 1].elo));
   svg.appendChild(endLabel);

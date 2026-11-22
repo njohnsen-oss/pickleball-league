@@ -194,6 +194,7 @@ function playerCardHtml(v, isOpen) {
   return `<details class="${classes.join(' ')}" data-player="${escapeAttr(p.Name)}"${isOpen ? ' open' : ''}>
     <summary class="pc-head">
       <span class="pc-rank">${v.rank}</span>
+      <span class="pc-avatar" aria-hidden="true">${initialsFor(p.Name)}</span>
       <span class="pc-identity">
         <span class="pc-name">${p.Name}${streakBadgeHtml(p.Streak || 0)}${provisionalBadgeHtml(p)}</span>
         <span class="pc-line">
@@ -229,6 +230,35 @@ function escapeAttr(value) {
   return String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 }
 
+function initialsFor(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const letters = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] || '?').slice(0, 2);
+  return escapeAttr(letters.toUpperCase());
+}
+
+// "Lauren Herr" -> "Lauren H." so names fit the narrow podium spots.
+function shortNameFor(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  const short = parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : (parts[0] || '');
+  return escapeAttr(short);
+}
+
+/* Top three ranked players, drawn 2-1-3 like a podium. Returns '' when there
+   aren't three ranked players yet, and the card list then shows everyone. */
+function podiumHtml(views) {
+  const top = views.filter((v) => !v.player.IsProvisional).slice(0, 3);
+  if (top.length < 3) return '';
+  const spot = (v, place) => `
+    <a class="podium-spot place-${place}" href="${v.profileUrl}">
+      ${place === 1 ? '<span class="podium-crown">Champ</span>' : ''}
+      <span class="podium-avatar" aria-hidden="true">${initialsFor(v.player.Name)}</span>
+      <span class="podium-name">${shortNameFor(v.player.Name)}</span>
+      <span class="podium-rating">${v.elo}</span>
+      <span class="podium-meta">#${place} · ${v.record}</span>
+    </a>`;
+  return `<div class="podium" aria-label="Top three">${spot(top[1], 2)}${spot(top[0], 1)}${spot(top[2], 3)}</div>`;
+}
+
 async function loadLeaderboard() {
   const loading = document.getElementById('loading');
   const views = document.getElementById('leaderboard-views');
@@ -252,11 +282,23 @@ async function loadLeaderboard() {
     body.innerHTML = '';
     cards.innerHTML = '';
     let rankedPosition = 0;
-    currentLeaderboard.forEach((p) => {
+    const rows = currentLeaderboard.map((p) => {
       if (!p.IsProvisional) rankedPosition += 1;
-      const view = playerView(p, rankedPosition);
+      return playerView(p, rankedPosition);
+    });
+    // The podium (when there is one) stands in for the top three cards; the
+    // desktop table still lists everyone.
+    const podium = podiumHtml(rows);
+    const podiumHost = document.getElementById('leaderboard-podium');
+    if (podiumHost) podiumHost.innerHTML = podium;
+    const onPodium = new Set(
+      podium ? rows.filter((v) => !v.player.IsProvisional).slice(0, 3).map((v) => v.player.Name) : []
+    );
+    rows.forEach((view) => {
       body.appendChild(leaderboardRow(view));
-      cards.insertAdjacentHTML('beforeend', playerCardHtml(view, expanded.has(p.Name)));
+      if (!onPodium.has(view.player.Name)) {
+        cards.insertAdjacentHTML('beforeend', playerCardHtml(view, expanded.has(view.player.Name)));
+      }
     });
     loading.style.display = 'none';
     views.hidden = false;
