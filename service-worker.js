@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v14-paddle-tap-1';
+const STATIC_CACHE = 'pickleball-static-v15-night-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   './matchup.html',
   './settings.html',
   './css/style.css',
+  './css/night.css',
   './js/config.js',
   './js/api.js',
   './js/admin.js',
