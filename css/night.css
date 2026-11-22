@@ -495,3 +495,162 @@ th, td { border-bottom-color: var(--panel-raised); }
 
 /* "Noah Johnsen vs Jon Jenson" is too long for the big title size. */
 body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
+
+/* =====================================================================
+   Live scorer (live-game.html) and TV view (live-view.html).
+   Side A is cream, Side B is coral; the neon ball green marks serve,
+   game point and anything "live". --team-*-ink is the text color that
+   sits on a solid team fill (navy on cream, white on coral).
+   ===================================================================== */
+.live-page,
+.tv-page {
+  --team-a: var(--cream);
+  --team-a-ink: var(--night);
+  --team-a-soft: rgba(246, 241, 231, 0.12);
+  --team-a-text: var(--cream);
+  --team-b: var(--coral);
+  --team-b-ink: #FFFFFF;
+  --team-b-soft: rgba(242, 92, 67, 0.16);
+  --team-b-text: var(--coral-light);
+  --horizon: var(--neon);
+  --midnight: var(--night);
+  --midnight-light: var(--panel-raised);
+  --skyway-light: var(--mist);
+}
+
+.side-a > .live-avatar, .side-a .live-avatar,
+.live-side-dot { color: var(--team-a-ink); }
+.side-b > .live-avatar, .side-b .live-avatar,
+.side-b .live-side-dot { color: var(--team-b-ink); }
+
+/* Setup */
+.live-lineup-team { border-color: var(--line); border-top-width: 4px; }
+.live-lineup-team.side-b { border-top-color: var(--team-b); }
+.live-lineup-team.side-a, .live-lineup-team:not(.side-b) { border-top-color: var(--team-a); }
+.live-lineup-head { font-family: var(--font-display); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.06em; }
+.live-swap-court { background: transparent; border-color: var(--line); color: var(--coral-light); }
+.live-court-tag { background: rgba(12, 23, 48, 0.55); color: var(--mist); }
+.live-player-grid .player-chip.picked .chip-slot { color: var(--team-a-ink); }
+.live-player-grid .player-chip.picked.side-b .chip-slot { color: var(--team-b-ink); }
+.live-odds { border-color: transparent; }
+.live-odds-labels .side-a { color: var(--team-a-text); }
+.live-odds-labels .side-b { color: var(--team-b-text); }
+
+/* Scoreboard */
+.live-scoreboard {
+  background: linear-gradient(160deg, var(--panel-raised) 0%, var(--panel) 75%);
+  border: 1px solid var(--line);
+}
+.live-chip { background: rgba(255, 255, 255, 0.08); color: var(--mist); }
+.live-game-point { color: var(--night); }
+@keyframes live-pulse { 50% { transform: scale(1.07); box-shadow: 0 0 0 6px rgba(217, 224, 60, 0.2); } }
+.live-tile { background: rgba(12, 23, 48, 0.55); }
+.live-tile.serving.side-a { background: rgba(246, 241, 231, 0.14); border-color: var(--team-a); }
+.live-tile.serving.side-b { background: rgba(242, 92, 67, 0.22); border-color: var(--team-b); }
+.live-tile-score { font-family: var(--font-display); font-size: 3.2rem; font-weight: 700; }
+.live-call { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; }
+.live-call-label { background: rgba(255, 255, 255, 0.08); color: var(--mist); }
+.live-call-caption { color: var(--mist); }
+
+/* Court */
+.live-court-surround { fill: var(--panel); }
+.live-court-surface { fill: #1F3D6E; }
+.live-court-kitchen { fill: #2A4C84; }
+.live-court-lines rect, .live-court-lines line { stroke: var(--cream); }
+.live-court-net, .live-page .live-court-net, .tv-page .live-court-net { stroke: var(--cream); }
+.live-court-post { fill: var(--cream); }
+.live-player > circle { stroke: #FFFFFF; }
+.live-player.side-a > circle { fill: var(--team-a); stroke: var(--night); }
+.live-player.side-b > circle { fill: var(--team-b); }
+.live-player.serving > circle { stroke: var(--neon); }
+.live-player.side-a .live-player-initials { fill: var(--night); }
+.live-player-name { stroke: rgba(12, 23, 48, 0.6); }
+.live-svg-ball .pb-ball, .fx-ball .pb-ball { filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5)); }
+.fx-shadow { fill: #050A18; }
+
+.live-toast { background: var(--panel-raised); }
+.live-toast.side-a { color: var(--team-a-ink); }
+.live-toast.side-b { color: var(--team-b-ink); }
+
+/* Point / Fault */
+.live-btn-kicker { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.04em; }
+.live-point { color: var(--team-a-ink); box-shadow: 0 10px 24px rgba(246, 241, 231, 0.18); }
+.live-point.side-b { color: var(--team-b-ink); box-shadow: 0 10px 24px rgba(242, 92, 67, 0.32); }
+.live-fault { border: 2px solid var(--line); background: var(--panel); color: var(--text); }
+.live-undo { border-color: transparent; }
+.live-undo-icon { background: var(--panel-raised); color: var(--coral-light); }
+.live-icon-btn { border-color: var(--line); }
+.live-hold-fill { background: var(--neon); }
+
+/* Game over */
+.live-hero { color: var(--team-a-ink); }
+.live-hero.side-b { color: var(--team-b-ink); }
+.live-hero-names { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+.live-hero-score { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; }
+.live-hero-badge { background: rgba(12, 23, 48, 0.14); }
+.live-hero.side-b .live-hero-badge { background: rgba(12, 23, 48, 0.3); }
+.live-stat { border-color: transparent; }
+.live-stat b { font-family: var(--font-display); font-weight: 600; font-size: 1.25rem; }
+.live-final-card { border-color: transparent; }
+.live-serve-bar { background: var(--panel-raised); }
+
+/* TV link + share sheet */
+.live-sync-dot { background: var(--mist-dim); }
+.live-sync-dot.ok { background: #7BE08F; box-shadow: 0 0 0 3px rgba(123, 224, 143, 0.18); }
+.live-sync-dot.error { background: var(--coral); }
+.live-tv-link { border-color: var(--line); color: var(--coral-light); }
+.live-share-backdrop { background: rgba(4, 8, 20, 0.7); }
+.live-share-card { border-top: 1px solid var(--line); box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.45); }
+.live-share-grip { background: var(--line); }
+.live-share-card h2 { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.02em; }
+.live-share-qr { border-color: transparent; }
+.live-share-link button { background: var(--coral); }
+.live-share-status.ok { background: var(--success-bg); color: var(--success); }
+.live-share-status.error { background: var(--danger-bg); color: var(--danger); }
+.rally-log-toggle { background: transparent; border-color: var(--line); color: var(--coral-light); }
+
+/* ---- TV ---- */
+.tv-page {
+  background:
+    radial-gradient(1100px 760px at 12% -12%, rgba(47, 66, 104, 0.85) 0%, transparent 62%),
+    radial-gradient(900px 700px at 112% 112%, rgba(242, 92, 67, 0.2) 0%, transparent 60%),
+    var(--night);
+}
+.tv { --tv-a: var(--cream); --tv-b: var(--coral); }
+.tv-brand span { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.tv-pill.live { background: rgba(242, 92, 67, 0.18); }
+.tv-pill.live i { background: var(--coral); }
+@keyframes tv-pulse { 0% { box-shadow: 0 0 0 0 rgba(242, 92, 67, 0.7); } 100% { box-shadow: 0 0 0 0.8em rgba(242, 92, 67, 0); } }
+.tv-team { --tc: var(--tv-a); --tc-soft: rgba(246, 241, 231, 0.2); --tc-ink: var(--night); background: radial-gradient(120% 90% at 50% 0%, var(--tc-soft), transparent 72%), rgba(18, 32, 61, 0.7); }
+.tv-team.side-b { --tc: var(--tv-b); --tc-soft: rgba(242, 92, 67, 0.32); --tc-ink: #FFFFFF; }
+.tv-av, .tv-serving { color: var(--tc-ink); }
+.tv-score { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; line-height: 0.95; }
+.tv-call { font-family: var(--font-display); font-weight: 700; color: var(--neon); }
+.tv-gamepoint { background: var(--neon); color: var(--night); }
+@keyframes tv-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(217, 224, 60, 0.55); } 50% { box-shadow: 0 0 0 0.45em rgba(217, 224, 60, 0); } }
+@keyframes tv-bump { 0% { transform: scale(1); } 35% { transform: scale(1.18); color: var(--neon); } 100% { transform: scale(1); } }
+.tv-chance-head .a { color: var(--tv-a); }
+.tv-chance-head .b { color: var(--coral-light); }
+.tv-chance-bar i { box-shadow: 2px 0 0 var(--night); }
+.tv-flash { font-family: var(--font-display); font-weight: 700; }
+.tv-flash.side-a { background: var(--cream); color: var(--night); }
+.tv-flash.side-b { background: var(--coral); color: #fff; }
+.tv-run-chip { background: rgba(217, 224, 60, 0.14); color: var(--neon); border-color: rgba(217, 224, 60, 0.45); }
+.tv-feed li { background: rgba(18, 32, 61, 0.75); }
+.tv-feed .kind-sideout { box-shadow: inset 3px 0 0 var(--neon); }
+.tv-feed .score { font-family: var(--font-display); font-weight: 600; }
+.tv-final { --tc: var(--tv-a); --tc-soft: rgba(246, 241, 231, 0.22); }
+.tv-final.side-b { --tc: var(--tv-b); --tc-soft: rgba(242, 92, 67, 0.36); }
+.tv-final-kicker { color: var(--neon); }
+.tv-final-names { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; }
+.tv-final-score { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; }
+.tv-final-badge { background: var(--neon); color: var(--night); }
+.tv-stat { background: rgba(18, 32, 61, 0.8); }
+.tv-stat b { font-family: var(--font-display); font-weight: 600; }
+.tv-waiting h1 { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+.tv-qr-card { background: rgba(18, 32, 61, 0.8); }
+.tv-sync i { background: var(--neon); }
+.tv-sync.ok i { background: #7BE08F; }
+.tv-sync.error i { background: var(--coral); }
+.live-lineup-head { white-space: nowrap; font-size: 0.8rem; }
+.live-swap-court { white-space: nowrap; }
