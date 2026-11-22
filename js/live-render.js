@@ -52,7 +52,7 @@ function courtSvg(state) {
   });
 
   return `<svg class="live-court-svg" viewBox="0 0 340 180" role="img" aria-label="${escapeHtml(firstName(state.server))} serving to ${state.serveCourt} court">`
-    + '<defs><marker id="live-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#FCB92E"></path></marker></defs>'
+    + '<defs><marker id="live-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#D9E03C"></path></marker></defs>'
     + '<rect class="live-court-surround" x="0" y="0" width="340" height="180" rx="16"></rect>'
     + '<rect class="live-court-surface" x="20" y="15" width="300" height="150"></rect>'
     + '<rect class="live-court-kitchen" x="122" y="15" width="96" height="150"></rect>'
@@ -230,7 +230,7 @@ function playFaultAnimation(courtHost, prev, next, opts = {}) {
   const shakeEl = opts.shakeEl || courtHost;
   setTimeout(() => {
     if (!g.isConnected) return;
-    if (net && net.animate) net.animate([{ stroke: '#FFFFFF', strokeWidth: 7 }, { stroke: '#F7F9FF', strokeWidth: 4 }], { duration: 260, easing: 'ease-out' });
+    if (net && net.animate) net.animate([{ stroke: '#FFFFFF', strokeWidth: 7 }, { stroke: '#F6F1E7', strokeWidth: 4 }], { duration: 260, easing: 'ease-out' });
     const k = (n) => f(n * px / 4) + 'px';
     shakeEl.animate([
       { transform: 'translate(0, 0)' },
@@ -374,7 +374,7 @@ function animateCourtMoves(courtHost, prev, next, opts = {}) {
     const [cx, cy] = contact;
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'fx-spark');
-    const colors = ['#FCB92E', '#FFFFFF', '#C9F23C'];
+    const colors = ['#D9E03C', '#FFFFFF', '#F25C43'];
     let html = `<circle class="fx-spark-flash" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9"></circle>`;
     for (let i = 0; i < 10; i += 1) html += `<circle class="fx-spark-dot" cx="0" cy="0" r="${i % 2 ? 1.6 : 2.2}" fill="${colors[i % 3]}"></circle>`;
     g.innerHTML = html;
@@ -416,7 +416,7 @@ function fireConfetti(canvas, count = 90) {
   canvas.height = rect.height * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  const colors = ['#FCB92E', '#3158CF', '#FE5500', '#B6C7FF', '#FFFFFF', '#FE8C00'];
+  const colors = ['#D9E03C', '#F25C43', '#F6F1E7', '#FF7A62', '#FFFFFF', '#AFBBD3'];
   const speed = Math.max(1, rect.width / 360);
   const bits = Array.from({ length: count }, (_, i) => {
     const a = Math.random() * Math.PI - Math.PI; // upward fan
@@ -452,7 +452,7 @@ function liveViewUrl() {
 
 // QR code as an inline SVG (js/vendor/qrcode.min.js). Returns '' if the
 // library didn't load, so callers can just hide the box.
-function qrSvg(text, dark = '#0E125B', light = '#FFFFFF') {
+function qrSvg(text, dark = '#0C1730', light = '#FFFFFF') {
   if (typeof qrcode !== 'function') return '';
   try {
     const qr = qrcode(0, 'M');
