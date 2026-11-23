@@ -654,3 +654,8 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
 .tv-sync.error i { background: var(--coral); }
 .live-lineup-head { white-space: nowrap; font-size: 0.8rem; }
 .live-swap-court { white-space: nowrap; }
+
+/* DUPR-style estimate */
+.how-ratings { border-color: transparent; border-radius: 16px; }
+.how-ratings > summary { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.how-ratings-body h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--coral-light); }
