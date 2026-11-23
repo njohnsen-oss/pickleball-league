@@ -508,10 +508,14 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
   --team-a-ink: var(--night);
   --team-a-soft: rgba(246, 241, 231, 0.12);
   --team-a-text: var(--cream);
+  --team-a-glow: rgba(246, 241, 231, 0.18);
+  --team-a-card: rgba(246, 241, 231, 0.2);
   --team-b: var(--coral);
   --team-b-ink: #FFFFFF;
   --team-b-soft: rgba(242, 92, 67, 0.16);
   --team-b-text: var(--coral-light);
+  --team-b-glow: rgba(242, 92, 67, 0.32);
+  --team-b-card: rgba(242, 92, 67, 0.32);
   --horizon: var(--neon);
   --midnight: var(--night);
   --midnight-light: var(--panel-raised);
@@ -545,8 +549,8 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
 .live-game-point { color: var(--night); }
 @keyframes live-pulse { 50% { transform: scale(1.07); box-shadow: 0 0 0 6px rgba(217, 224, 60, 0.2); } }
 .live-tile { background: rgba(12, 23, 48, 0.55); }
-.live-tile.serving.side-a { background: rgba(246, 241, 231, 0.14); border-color: var(--team-a); }
-.live-tile.serving.side-b { background: rgba(242, 92, 67, 0.22); border-color: var(--team-b); }
+.live-tile.serving.side-a { background: var(--team-a-soft); border-color: var(--team-a); }
+.live-tile.serving.side-b { background: var(--team-b-soft); border-color: var(--team-b); }
 .live-tile-score { font-family: var(--font-display); font-size: 3.2rem; font-weight: 700; }
 .live-call { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; }
 .live-call-label { background: rgba(255, 255, 255, 0.08); color: var(--mist); }
@@ -560,10 +564,11 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
 .live-court-net, .live-page .live-court-net, .tv-page .live-court-net { stroke: var(--cream); }
 .live-court-post { fill: var(--cream); }
 .live-player > circle { stroke: #FFFFFF; }
-.live-player.side-a > circle { fill: var(--team-a); stroke: var(--night); }
-.live-player.side-b > circle { fill: var(--team-b); }
+.live-player.side-a > circle { fill: var(--team-a); stroke: var(--team-a-ink); }
+.live-player.side-b > circle { fill: var(--team-b); stroke: var(--team-b-ink); }
 .live-player.serving > circle { stroke: var(--neon); }
-.live-player.side-a .live-player-initials { fill: var(--night); }
+.live-player.side-a .live-player-initials { fill: var(--team-a-ink); }
+.live-player.side-b .live-player-initials { fill: var(--team-b-ink); }
 .live-player-name { stroke: rgba(12, 23, 48, 0.6); }
 .live-svg-ball .pb-ball, .fx-ball .pb-ball { filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.5)); }
 .fx-shadow { fill: #050A18; }
@@ -574,8 +579,8 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
 
 /* Point / Fault */
 .live-btn-kicker { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; letter-spacing: 0.04em; }
-.live-point { color: var(--team-a-ink); box-shadow: 0 10px 24px rgba(246, 241, 231, 0.18); }
-.live-point.side-b { color: var(--team-b-ink); box-shadow: 0 10px 24px rgba(242, 92, 67, 0.32); }
+.live-point { color: var(--team-a-ink); box-shadow: 0 10px 24px var(--team-a-glow); }
+.live-point.side-b { color: var(--team-b-ink); box-shadow: 0 10px 24px var(--team-b-glow); }
 .live-fault { border: 2px solid var(--line); background: var(--panel); color: var(--text); }
 .live-undo { border-color: transparent; }
 .live-undo-icon { background: var(--panel-raised); color: var(--coral-light); }
@@ -616,31 +621,31 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
     radial-gradient(900px 700px at 112% 112%, rgba(242, 92, 67, 0.2) 0%, transparent 60%),
     var(--night);
 }
-.tv { --tv-a: var(--cream); --tv-b: var(--coral); }
+.tv { --tv-a: var(--team-a); --tv-b: var(--team-b); }
 .tv-brand span { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
 .tv-pill.live { background: rgba(242, 92, 67, 0.18); }
 .tv-pill.live i { background: var(--coral); }
 @keyframes tv-pulse { 0% { box-shadow: 0 0 0 0 rgba(242, 92, 67, 0.7); } 100% { box-shadow: 0 0 0 0.8em rgba(242, 92, 67, 0); } }
-.tv-team { --tc: var(--tv-a); --tc-soft: rgba(246, 241, 231, 0.2); --tc-ink: var(--night); background: radial-gradient(120% 90% at 50% 0%, var(--tc-soft), transparent 72%), rgba(18, 32, 61, 0.7); }
-.tv-team.side-b { --tc: var(--tv-b); --tc-soft: rgba(242, 92, 67, 0.32); --tc-ink: #FFFFFF; }
+.tv-team { --tc: var(--tv-a); --tc-soft: var(--team-a-card); --tc-ink: var(--team-a-ink); background: radial-gradient(120% 90% at 50% 0%, var(--tc-soft), transparent 72%), rgba(18, 32, 61, 0.7); }
+.tv-team.side-b { --tc: var(--tv-b); --tc-soft: var(--team-b-card); --tc-ink: var(--team-b-ink); }
 .tv-av, .tv-serving { color: var(--tc-ink); }
 .tv-score { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; line-height: 0.95; }
 .tv-call { font-family: var(--font-display); font-weight: 700; color: var(--neon); }
 .tv-gamepoint { background: var(--neon); color: var(--night); }
 @keyframes tv-glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(217, 224, 60, 0.55); } 50% { box-shadow: 0 0 0 0.45em rgba(217, 224, 60, 0); } }
 @keyframes tv-bump { 0% { transform: scale(1); } 35% { transform: scale(1.18); color: var(--neon); } 100% { transform: scale(1); } }
-.tv-chance-head .a { color: var(--tv-a); }
-.tv-chance-head .b { color: var(--coral-light); }
+.tv-chance-head .a { color: var(--team-a-text); }
+.tv-chance-head .b { color: var(--team-b-text); }
 .tv-chance-bar i { box-shadow: 2px 0 0 var(--night); }
 .tv-flash { font-family: var(--font-display); font-weight: 700; }
-.tv-flash.side-a { background: var(--cream); color: var(--night); }
-.tv-flash.side-b { background: var(--coral); color: #fff; }
+.tv-flash.side-a { background: var(--team-a); color: var(--team-a-ink); }
+.tv-flash.side-b { background: var(--team-b); color: var(--team-b-ink); }
 .tv-run-chip { background: rgba(217, 224, 60, 0.14); color: var(--neon); border-color: rgba(217, 224, 60, 0.45); }
 .tv-feed li { background: rgba(18, 32, 61, 0.75); }
 .tv-feed .kind-sideout { box-shadow: inset 3px 0 0 var(--neon); }
 .tv-feed .score { font-family: var(--font-display); font-weight: 600; }
-.tv-final { --tc: var(--tv-a); --tc-soft: rgba(246, 241, 231, 0.22); }
-.tv-final.side-b { --tc: var(--tv-b); --tc-soft: rgba(242, 92, 67, 0.36); }
+.tv-final { --tc: var(--tv-a); --tc-soft: var(--team-a-card); }
+.tv-final.side-b { --tc: var(--tv-b); --tc-soft: var(--team-b-card); }
 .tv-final-kicker { color: var(--neon); }
 .tv-final-names { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.01em; }
 .tv-final-score { font-family: var(--font-display); font-weight: 700; letter-spacing: 0; }
@@ -659,3 +664,43 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
 .how-ratings { border-color: transparent; border-radius: 16px; }
 .how-ratings > summary { font-family: var(--font-display); font-size: 1.05rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
 .how-ratings-body h3 { font-family: var(--font-display); font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--coral-light); }
+
+/* ---- Team colors (Phase 1): picker on the Live setup screen ---- */
+.live-swatches { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.live-swatch {
+  position: relative; display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 4px; box-sizing: border-box; border: 2px solid transparent; border-radius: 12px;
+  background: var(--sw); color: var(--sw-ink); font: inherit; font-size: 0.72rem; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-tap-highlight-color: transparent;
+}
+.live-swatch.selected { border-color: #FFFFFF; box-shadow: 0 0 0 2px var(--night), 0 0 0 4px var(--sw); }
+.live-swatch.blocked { opacity: 0.28; background-image: linear-gradient(135deg, transparent 46%, var(--sw-ink) 47%, var(--sw-ink) 53%, transparent 54%); }
+.live-swatch.custom { margin: 0; --sw: var(--panel-raised); --sw-ink: var(--text); background-image: conic-gradient(from 200deg, #FF4FA3, #A57BFF, #4DA8FF, #1FC2A7, #FF9A2E, #FF4FA3); }
+.live-swatch.custom span { padding: 1px 4px; border-radius: 6px; background: rgba(12, 23, 48, 0.75); color: #FFFFFF; font-size: 0.68rem; }
+.live-swatch.custom.selected { background-image: none; }
+.live-swatch.custom.selected span { background: transparent; color: var(--sw-ink); }
+.live-swatch input[type="color"] { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.live-color-preview-one { margin: 0 0 12px; }
+.live-color-preview-one span {
+  display: flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 8px; border-radius: 12px;
+  font-family: var(--font-display); font-size: 0.95rem; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.live-color-preview-one .side-a { background: var(--team-a); color: var(--team-a-ink); box-shadow: 0 6px 16px var(--team-a-glow); }
+.live-color-preview-one .side-b { background: var(--team-b); color: var(--team-b-ink); box-shadow: 0 6px 16px var(--team-b-glow); }
+.live-color-sheet .live-swatches { text-align: left; }
+.live-color-sheet .btn { margin-top: 14px; }
+.live-color-chip {
+  display: flex; align-items: center; gap: 7px; width: 100%; min-height: 36px; margin-top: 8px; padding: 0 10px;
+  border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--text);
+  font: inherit; font-size: 0.76rem; font-weight: 700; text-align: left;
+}
+.live-color-chip .live-dot { width: 12px; height: 12px; margin-right: 0; }
+.live-color-chip-edit { margin-left: auto; color: var(--mist); font-weight: 600; }
+.live-color-msg { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: var(--danger-bg); color: var(--danger); font-size: 0.8rem; font-weight: 600; }
+
+/* "Win by 2" once both teams reach one point short of the target */
+.live-game-point.winby2 { background: transparent; color: var(--neon); box-shadow: inset 0 0 0 1.5px var(--neon); animation: none; }
+.tv-gamepoint.tv-winby2 { background: transparent; color: var(--neon); box-shadow: inset 0 0 0 0.12em var(--neon); animation: none; }
+
+/* Double-digit calls (10 – 10 – 1) shrink a step so they stay inside the TV's centre column. */
+.tv-call.long { font-size: clamp(26px, min(7.6vh, 4.9vw), 104px); }
