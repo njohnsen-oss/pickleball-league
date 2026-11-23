@@ -761,3 +761,11 @@ body.matchmaking-page header.top-bar h1 { font-size: clamp(1.4rem, 6.4vw, 2.1rem
   body.leaderboard-page .admin-lock-label,
   body.matchmaking-page .admin-lock-label { display: none; }
 }
+
+/* ---- Phase 3: rank-by switch help line, TV-link refusal note ---- */
+.rating-view-toggle button { padding-left: 4px; padding-right: 4px; font-size: 0.86rem; }
+.rating-view-help { margin: -6px 0 14px; color: var(--mist); font-size: 0.8rem; line-height: 1.4; }
+.live-tv-alert { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--danger-bg); color: var(--danger); font-size: 0.82rem; font-weight: 600; line-height: 1.35; }
+/* Keep "39-28 · 58% won" on one line whatever number sits on the right; the form dots give way first. */
+.pc-line { white-space: nowrap; overflow: hidden; }
+.pc-line .pc-form { flex-shrink: 1; min-width: 0; overflow: hidden; }
