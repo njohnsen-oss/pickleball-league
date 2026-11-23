@@ -22,15 +22,6 @@ function setFormat(format) {
   document.getElementById('post-game-panel').style.display = 'none';
 }
 
-function playerRating(name) {
-  const p = players.find((x) => x.Name === name);
-  return p ? Number(p.Elo) || 1000 : 1000;
-}
-
-function predictedProbability(ratingA, ratingB) {
-  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
-}
-
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -60,7 +51,7 @@ function isLineupFull() {
 }
 
 // Keeps the {slotId: name} shape its callers already used — the ?a=/?b=
-// prefill link, the team balancer and Swap sides all assign a whole lineup.
+// prefill link and Swap sides both assign a whole lineup.
 function assignPickerValues(valuesById) {
   activeSlotIds().forEach((id) => {
     if (id in valuesById) slots[id] = valuesById[id] || '';
@@ -91,8 +82,6 @@ function slotNamesHtml(ids) {
 
 function refreshPickers() {
   const isDoubles = currentFormat === 'Doubles';
-  const balancePanel = document.getElementById('balance-panel');
-  if (balancePanel) balancePanel.style.display = isDoubles ? 'block' : 'none';
   if (!isDoubles) { slots.a2 = ''; slots.b2 = ''; }
 
   document.getElementById('slot-names-a').innerHTML = slotNamesHtml(isDoubles ? ['a1', 'a2'] : ['a1']);
@@ -123,6 +112,87 @@ function refreshPickers() {
     ? 'Lineup set — tap a name to swap someone out.'
     : `Tap ${remaining} more player${remaining === 1 ? '' : 's'}`;
   document.getElementById('clear-players').disabled = activeSlotIds().every((id) => !slots[id]);
+  renderTeamPicks();
+}
+
+// ---------- set teams (Teams page) ----------
+// One tap puts a set team's two players on a side (switching to Doubles if
+// needed); a second tap takes them off. Same rules as the live scorer.
+let setTeams = [];
+
+function teamSideNow(team) {
+  if (currentFormat !== 'Doubles') return '';
+  const key = teamKey(team.Player1, team.Player2);
+  return ['A', 'B'].find((side) => {
+    const k = side.toLowerCase();
+    return slots[k + '1'] && slots[k + '2'] && teamKey(slots[k + '1'], slots[k + '2']) === key;
+  }) || '';
+}
+
+// The side a team would go on: one holding only (some of) its players, else
+// the first empty side; '' when there's no room.
+function teamTargetSide(team) {
+  const mine = new Set([team.Player1, team.Player2]);
+  const sideOf = (side) => {
+    const k = side.toLowerCase();
+    return [slots[k + '1'], currentFormat === 'Doubles' ? slots[k + '2'] : ''].filter(Boolean);
+  };
+  const usable = (side) => {
+    const other = side === 'A' ? 'B' : 'A';
+    return sideOf(side).every((n) => mine.has(n)) && !sideOf(other).some((n) => mine.has(n));
+  };
+  return ['A', 'B'].find((side) => sideOf(side).length && usable(side))
+    || ['A', 'B'].find((side) => !sideOf(side).length && usable(side)) || '';
+}
+
+function renderTeamPicks() {
+  const host = document.getElementById('team-picks');
+  if (!host || typeof teamKey !== 'function') return;
+  const names = new Set(players.map((p) => p.Name));
+  const teams = setTeams.filter((t) => names.has(t.Player1) && names.has(t.Player2));
+  host.hidden = !teams.length;
+  if (!teams.length) return;
+  const short = shortNamer(players.map((p) => p.Name));
+  document.getElementById('team-pick-row').innerHTML = teams.map((t) => {
+    const on = teamSideNow(t);
+    const target = on || teamTargetSide(t);
+    const ink = typeof teamInkFor === 'function' && t.Color ? teamInkFor(t.Color) : '#FFFFFF';
+    const style = t.Color ? ` style="--tm:${escapeHtml(t.Color)};--tm-ink:${ink}"` : '';
+    const init = (n) => n.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+    return `<button type="button" class="team-pick${on ? ' picked' : ''}" data-team="${escapeHtml(t.TeamId)}" aria-pressed="${Boolean(on)}"${!target ? ' disabled' : ''}${style}>`
+      + `<span class="team-avs" aria-hidden="true"><span>${escapeHtml(init(t.Player1))}</span><span>${escapeHtml(init(t.Player2))}</span></span>`
+      + `<span class="team-pick-name">${escapeHtml(teamLabelFor(t, short))}</span>${on ? `<span class="team-pick-side">${on}</span>` : ''}</button>`;
+  }).join('');
+}
+
+function toggleTeam(teamId) {
+  const team = setTeams.find((t) => t.TeamId === teamId);
+  if (!team) return;
+  const on = teamSideNow(team);
+  if (on) {
+    const k = on.toLowerCase();
+    slots[k + '1'] = '';
+    slots[k + '2'] = '';
+    refreshPickers();
+    return;
+  }
+  if (currentFormat !== 'Doubles') setFormat('Doubles');
+  const side = teamTargetSide(team);
+  if (!side) return;
+  const k = side.toLowerCase();
+  // Whoever is already on that side keeps their spot; the partner fills the other.
+  const first = slots[k + '2'] === team.Player1 || slots[k + '1'] === team.Player2 ? team.Player2 : team.Player1;
+  slots[k + '1'] = first;
+  slots[k + '2'] = first === team.Player1 ? team.Player2 : team.Player1;
+  refreshPickers();
+}
+
+function loadSetTeams() {
+  if (typeof teamKey !== 'function') return;
+  apiGetCached('getTeams', null, (data) => {
+    setTeams = (data && data.teams) || [];
+    refreshPickers();
+  }).catch(() => { /* an older backend without teams: pick players as before */ });
 }
 
 // Sorts the roster by "most recently played with" (derived from game
@@ -182,6 +252,11 @@ document.getElementById('format-toggle').addEventListener('click', (e) => {
   setFormat(btn.dataset.format);
 });
 
+document.getElementById('team-pick-row').addEventListener('click', (e) => {
+  const btn = e.target.closest('.team-pick');
+  if (btn && !btn.disabled) toggleTeam(btn.dataset.team);
+});
+
 document.getElementById('player-grid').addEventListener('click', (e) => {
   const btn = e.target.closest('.player-chip');
   if (btn && !btn.disabled) togglePlayer(btn.dataset.player);
@@ -217,49 +292,6 @@ document.querySelectorAll('.preset-row').forEach((row) => {
   input.addEventListener('input', () => syncPresetHighlight(input));
 });
 
-function balanceSelectedPlayers() {
-  if (currentFormat !== 'Doubles') return false;
-  const selected = SLOT_IDS_DOUBLES.map((id) => slots[id]);
-  const resultEl = document.getElementById('balance-result');
-  if (selected.some((n) => !n) || new Set(selected).size !== 4) {
-    resultEl.className = 'balance-result status error';
-    resultEl.textContent = 'Pick four different players first.';
-    resultEl.style.display = 'block';
-    return false;
-  }
-
-  const [p1, p2, p3, p4] = selected;
-  const pairings = [
-    [[p1, p2], [p3, p4]],
-    [[p1, p3], [p2, p4]],
-    [[p1, p4], [p2, p3]],
-  ].map(([a, b]) => {
-    const ratingA = (playerRating(a[0]) + playerRating(a[1])) / 2;
-    const ratingB = (playerRating(b[0]) + playerRating(b[1])) / 2;
-    const pA = predictedProbability(ratingA, ratingB);
-    return { a, b, ratingA, ratingB, pA, gap: Math.abs(pA - 0.5) };
-  }).sort((x, y) => x.gap - y.gap);
-
-  const best = pairings[0];
-  assignPickerValues({ a1: best.a[0], a2: best.a[1], b1: best.b[0], b2: best.b[1] });
-
-  const pctA = Math.round(best.pA * 100);
-  const pctB = 100 - pctA;
-  const ratingDiff = Math.abs(best.ratingA - best.ratingB);
-  let handicapText = '';
-  if (Math.max(pctA, pctB) >= 62) {
-    const points = Math.min(4, Math.max(1, Math.round(ratingDiff / 55)));
-    const weaker = best.ratingA < best.ratingB ? best.a.join(' + ') : best.b.join(' + ');
-    handicapText = `<div class="handicap-note">Optional fun handicap: <strong>${weaker}</strong> starts +${points}. Keep the recorded score unhandicapped if you want the rating model to stay clean.</div>`;
-  }
-  resultEl.className = 'balance-result';
-  resultEl.innerHTML = `<strong>${best.a.join(' + ')}</strong> vs <strong>${best.b.join(' + ')}</strong><br><span>${pctA}% / ${pctB}% predicted</span>${handicapText}`;
-  resultEl.style.display = 'block';
-  return true;
-}
-
-document.getElementById('balance-btn').addEventListener('click', balanceSelectedPlayers);
-
 function newRequestId() {
   if (window.crypto && typeof window.crypto.randomUUID === 'function') return window.crypto.randomUUID();
   return 'game-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -287,7 +319,6 @@ function showPostGamePanel(sideAPlayers, sideBPlayers, scoreA, scoreB, gameId) {
   const winnerScore = aWon ? scoreA : scoreB;
   const loserScore = aWon ? scoreB : scoreA;
   summary.textContent = `${winners.join(' + ')} beat ${losers.join(' + ')} ${winnerScore}–${loserScore}`;
-  document.getElementById('rebalance-btn').style.display = currentFormat === 'Doubles' ? 'flex' : 'none';
   panel.style.display = 'block';
 }
 
@@ -303,9 +334,6 @@ document.getElementById('swap-sides-btn').addEventListener('click', () => {
   clearScoresAndFocus();
 });
 
-document.getElementById('rebalance-btn').addEventListener('click', () => {
-  if (balanceSelectedPlayers()) clearScoresAndFocus();
-});
 
 document.getElementById('undo-game-btn').addEventListener('click', async () => {
   if (!lastSavedGameId || !window.confirm('Undo the game you just saved? Ratings will be recalculated.')) return;
@@ -397,3 +425,4 @@ document.getElementById('submit-btn').addEventListener('click', async () => {
 
 readPrefill();
 loadPlayers();
+loadSetTeams();
