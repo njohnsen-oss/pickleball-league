@@ -3,11 +3,13 @@
  * Bind this script to the Google Sheet (Extensions > Apps Script) that has
  * two tabs: "Players" and "Games" with the header rows described below.
  * A third, optional "Rallies" tab is created automatically the first time a
- * live-scored game is saved.
+ * live-scored game is saved. An optional "Teams" tab (set teams) is created
+ * the first time a team is made on the Teams page.
  *
  * Players: PlayerId | Name | Elo | GamesPlayed | Wins | Losses | Archived
  * Games:   GameId | Date | Format | SideA_Player1 | SideA_Player2 | SideB_Player1 | SideB_Player2 | ScoreA | ScoreB | Winner | EloDeltaA | EloDeltaB | EloDeltaA1 | EloDeltaA2 | EloDeltaB1 | EloDeltaB2
  * Rallies: GameId | Seq | ElapsedSec | ServingSide | Server | ServerNumber | Result | ScoreA | ScoreB
+ * Teams:   TeamId | Player1 | Player2 | Name | Color | CreatedAt | Archived
  *
  * Deploy: Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone.
  * To ship changes later: Manage deployments > edit existing deployment > Version: New version > Deploy.
@@ -244,6 +246,8 @@ function doGet(e) {
       result = getGameRallies(e.parameter.gameId);
     } else if (action === 'getLive') {
       result = getLive(e.parameter.since);
+    } else if (action === 'getTeams') {
+      result = getTeams();
     } else {
       return jsonOutput({ error: 'Unknown action: ' + action });
     }
@@ -278,6 +282,15 @@ function doPost(e) {
     } else if (action === 'setDuprAnchor') {
       checkPasscode(body.passcode);
       result = setDuprAnchor(body.player, body.rating);
+    } else if (action === 'addTeam') {
+      checkPasscode(body.passcode);
+      result = addTeam(body.player1, body.player2, body.name, body.color);
+    } else if (action === 'updateTeam') {
+      checkPasscode(body.passcode);
+      result = updateTeam(body.teamId, body.name, body.color);
+    } else if (action === 'removeTeam') {
+      checkPasscode(body.passcode);
+      result = removeTeam(body.teamId);
     } else if (action === 'addPlayer') {
       checkPasscode(body.passcode);
       result = addPlayer(body.name);
@@ -475,6 +488,111 @@ function findPlayerByName(players, name) {
   var match = players.filter(function (p) { return p.Name === name; })[0];
   if (!match) throw new Error('Player not found: ' + name);
   return match;
+}
+
+// ---- Teams (set teams) ----
+// A set team is a pair who play together a lot. The admin makes one on the
+// Teams page (usually from a suggested pair) and can give it a name and a
+// color. Nothing about a team is stored with the games: its record is worked
+// out from every doubles game the two have played on the same side, so a new
+// team starts with its full history. The Teams tab is created with the first
+// team; removing a team only marks it Archived.
+var TEAMS_HEADERS = ['TeamId', 'Player1', 'Player2', 'Name', 'Color', 'CreatedAt', 'Archived'];
+var TEAM_NAME_MAX = 30;
+
+function teamsSheetToObjects() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Teams');
+  if (!sheet) return []; // no teams yet
+  var values = sheet.getDataRange().getValues();
+  if (!values.length) return [];
+  var headers = values[0];
+  checkHeaders('Teams', headers, TEAMS_HEADERS);
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    if (!row[0]) continue;
+    var obj = {};
+    for (var c = 0; c < headers.length; c++) obj[headers[c]] = row[c];
+    obj._rowIndex = i + 1;
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function publicTeam(t) {
+  var created = t.CreatedAt instanceof Date ? t.CreatedAt.toISOString() : String(t.CreatedAt || '');
+  return { TeamId: String(t.TeamId), Player1: String(t.Player1), Player2: String(t.Player2), Name: String(t.Name || ''), Color: String(t.Color || ''), CreatedAt: created };
+}
+
+function getTeams() {
+  return { teams: teamsSheetToObjects().filter(function (t) { return t.Archived !== true; }).map(publicTeam) };
+}
+
+function teamPairKey(a, b) {
+  return [String(a), String(b)].sort().join('|');
+}
+
+function cleanTeamName(name) {
+  var n = String(name == null ? '' : name).trim().replace(/\s+/g, ' ');
+  if (n.length > TEAM_NAME_MAX) throw new Error('Keep the team name to ' + TEAM_NAME_MAX + ' characters or fewer');
+  if (/^[=+\-@]/.test(n)) throw new Error('A team name can’t start with = + - or @');
+  return n;
+}
+
+function cleanTeamColor(color) {
+  var c = String(color == null ? '' : color).trim();
+  if (!c) return '';
+  if (!/^#[0-9A-Fa-f]{6}$/.test(c)) throw new Error('Team color should look like #F25C43');
+  return c.toUpperCase();
+}
+
+function findTeam(teams, teamId) {
+  var t = teams.filter(function (x) { return String(x.TeamId) === String(teamId) && x.Archived !== true; })[0];
+  if (!t) throw new Error('Team not found: ' + teamId);
+  return t;
+}
+
+function addTeam(player1, player2, name, color) {
+  var players = playersSheetToObjects().filter(function (p) { return p.Archived !== true; });
+  var a = findPlayerByName(players, player1);
+  var b = findPlayerByName(players, player2);
+  if (a.Name === b.Name) throw new Error('Pick two different players');
+  var cleanName = cleanTeamName(name);
+  var cleanColor = cleanTeamColor(color);
+  var teams = teamsSheetToObjects();
+  var key = teamPairKey(a.Name, b.Name);
+  var dup = teams.filter(function (t) { return t.Archived !== true && teamPairKey(t.Player1, t.Player2) === key; })[0];
+  if (dup) throw new Error((dup.Name || (dup.Player1 + ' & ' + dup.Player2)) + ' is already a team');
+  var maxNum = 0;
+  teams.forEach(function (t) {
+    var n = parseInt(String(t.TeamId).replace('t', ''), 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  });
+  var pair = [a.Name, b.Name].sort();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureSheetHeaders(ss, 'Teams', TEAMS_HEADERS); // creates the tab with the first team
+  var sheet = ss.getSheetByName('Teams');
+  var row = ['t' + (maxNum + 1), pair[0], pair[1], cleanName, cleanColor, new Date(), false];
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, TEAMS_HEADERS.length).setValues([row]);
+  return { team: publicTeam({ TeamId: row[0], Player1: row[1], Player2: row[2], Name: row[3], Color: row[4], CreatedAt: row[5] }) };
+}
+
+function updateTeam(teamId, name, color) {
+  var sheet = getSheet('Teams');
+  var t = findTeam(teamsSheetToObjects(), teamId);
+  var cleanName = cleanTeamName(name);
+  var cleanColor = cleanTeamColor(color);
+  sheet.getRange(t._rowIndex, 4, 1, 2).setValues([[cleanName, cleanColor]]); // Name, Color
+  t.Name = cleanName;
+  t.Color = cleanColor;
+  return { team: publicTeam(t) };
+}
+
+function removeTeam(teamId) {
+  var sheet = getSheet('Teams');
+  var t = findTeam(teamsSheetToObjects(), teamId);
+  sheet.getRange(t._rowIndex, 7).setValue(true); // Archived
+  return { TeamId: String(t.TeamId), Archived: true };
 }
 
 // ---- Games ----
