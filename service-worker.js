@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v17-dupr-est-1';
+const STATIC_CACHE = 'pickleball-static-v18-team-colors-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -18,6 +18,7 @@ const STATIC_ASSETS = [
   './js/leaderboard.js',
   './js/log-game.js',
   './js/live-score.js',
+  './js/team-colors.js',
   './js/live-render.js',
   './js/live-game.js',
   './js/live-view.js',

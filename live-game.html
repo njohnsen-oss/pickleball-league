@@ -42,11 +42,13 @@
           <div class="live-lineup-team side-a">
             <div class="live-lineup-head"><span class="live-side-dot">A</span>Side A<button type="button" class="live-swap-court" data-side="a" title="Swap who starts in the right court">⇄ Courts</button></div>
             <div class="slot-names" id="live-slots-a"></div>
+            <button type="button" class="live-color-chip" id="live-color-chip-a" data-side="A"></button>
           </div>
           <div class="live-lineup-vs" aria-hidden="true">VS</div>
           <div class="live-lineup-team side-b">
             <div class="live-lineup-head"><span class="live-side-dot">B</span>Side B<button type="button" class="live-swap-court" data-side="b" title="Swap who starts in the right court">⇄ Courts</button></div>
             <div class="slot-names" id="live-slots-b"></div>
+            <button type="button" class="live-color-chip" id="live-color-chip-b" data-side="B"></button>
           </div>
         </div>
 
@@ -169,6 +171,21 @@
       </section>
     </div>
 
+    <!-- Team color sheet: opens by itself when a team's last player is picked, or from the color chip on its card.
+         A pick previews straight away; Save keeps it, tapping outside puts the colors back as they were. -->
+    <div class="live-share live-color-sheet" id="live-color-sheet" hidden>
+      <div class="live-share-backdrop" data-close></div>
+      <div class="live-share-card" role="dialog" aria-modal="true" aria-labelledby="live-color-title">
+        <div class="live-share-grip"></div>
+        <h2 id="live-color-title">Team color</h2>
+        <p class="live-share-sub">Shows on the scorer, the TV and the court.</p>
+        <div class="live-color-preview-one" id="live-color-preview-one" aria-hidden="true"></div>
+        <div class="live-swatches" id="live-color-swatches"></div>
+        <div class="live-color-msg" id="live-color-msg" role="status" hidden></div>
+        <button type="button" class="primary btn" id="live-color-done">Save</button>
+      </div>
+    </div>
+
     <div class="live-share" id="live-share" hidden>
       <div class="live-share-backdrop" data-close></div>
       <div class="live-share-card" role="dialog" aria-modal="true" aria-labelledby="live-share-title">
@@ -219,6 +236,7 @@
   <script src="js/admin.js"></script>
   <script src="js/live-score.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
+  <script src="js/team-colors.js"></script>
   <script src="js/live-render.js"></script>
   <script src="js/live-game.js"></script>
 </body>
