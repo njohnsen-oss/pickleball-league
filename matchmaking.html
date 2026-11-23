@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Matchmaking — Pickleball</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;600;700&family=Oswald:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/night.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0C1730" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Pickleball" />
+</head>
+<body class="matchmaking-page">
+  <div class="league-banner" id="league-banner"></div>
+  <header class="top-bar"><h1>Matchmaking</h1><button id="settings-btn" class="settings-link" title="Change data source">⚙</button></header>
+  <main>
+    <div id="loading" class="loading" role="status">Loading players…</div>
+
+    <div id="mm-content" style="display:none">
+      <section class="mm-section">
+        <div class="mm-section-head">
+          <h2>Who's here</h2>
+          <span class="mm-count" id="mm-count">0 here</span>
+        </div>
+        <div class="picker-heading">
+          <span class="picker-hint">Tap everyone who's playing tonight.</span>
+          <span class="mm-head-actions"><button type="button" class="picker-clear" id="mm-all">All</button><button type="button" class="picker-clear" id="mm-none">Clear</button></span>
+        </div>
+        <div class="player-grid" id="mm-roster"></div>
+      </section>
+
+      <section class="mm-section mm-settings">
+        <div class="live-option">
+          <span class="live-option-label">Courts</span>
+          <div class="mm-stepper">
+            <button type="button" id="mm-courts-down" aria-label="One fewer court">−</button>
+            <b id="mm-courts">1</b>
+            <button type="button" id="mm-courts-up" aria-label="One more court">+</button>
+          </div>
+        </div>
+        <div class="live-option">
+          <span class="live-option-label">Format</span>
+          <div class="toggle-group" id="mm-format">
+            <button type="button" data-format="Doubles" class="active">Doubles</button>
+            <button type="button" data-format="Singles">Singles</button>
+          </div>
+        </div>
+        <div class="live-option">
+          <span class="live-option-label">How to match</span>
+          <div class="toggle-group" id="mm-mode"></div>
+          <p class="field-help" id="mm-mode-help"></p>
+        </div>
+        <div class="live-option">
+          <span class="live-option-label">Game to</span>
+          <div class="toggle-group" id="mm-target">
+            <button type="button" data-target="11" class="active">11</button>
+            <button type="button" data-target="15">15</button>
+            <button type="button" data-target="21">21</button>
+          </div>
+        </div>
+      </section>
+
+      <button type="button" class="primary btn" id="mm-make">Make round 1</button>
+      <div id="mm-status" class="status" style="display:none"></div>
+
+      <section id="mm-round" class="mm-round" style="display:none">
+        <div class="mm-section-head">
+          <h2 id="mm-round-title">Round 1</h2>
+          <button type="button" class="picker-clear" id="mm-reshuffle">Reshuffle</button>
+        </div>
+        <p class="mm-swap-hint" id="mm-swap-hint">Tap a name, then another, to swap them.</p>
+        <div id="mm-games"></div>
+        <div class="mm-sitout" id="mm-sitout"></div>
+      </section>
+
+      <section id="mm-earlier" class="mm-earlier" style="display:none">
+        <h2>Earlier rounds</h2>
+        <ol id="mm-earlier-list"></ol>
+      </section>
+
+      <button type="button" class="mm-new-night" id="mm-new-night">Start a new night</button>
+    </div>
+  </main>
+
+  <nav class="tab-bar">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 5h2a2 2 0 0 1-2 2M7 5H5a2 2 0 0 0 2 2M7 3h10v6a5 5 0 0 1-10 0V3Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Leaderboard
+    </a>
+    <a href="log-game.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+      Log Game
+    </a>
+    <a href="live-game.html" class="active">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Live
+    </a>
+    <a href="history.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      History
+    </a>
+    <a href="players.html">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6M16 8a3 3 0 1 0 0-6M22 20c0-2.7-2-5-5-5.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Players
+    </a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/matchmaker.js"></script>
+  <script src="js/matchmaking.js"></script>
+</body>
+</html>
