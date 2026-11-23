@@ -117,6 +117,7 @@ function render() {
     setScreen('waiting');
     renderWaiting(null, null);
   } else {
+    if (typeof applyTeamColors === 'function') applyTeamColors(document.body, live.setup.colors);
     const state = replayLiveGame(live.setup, live.events);
     if (!state.over) {
       const fromIdle = screen === 'waiting' || screen === 'final';
@@ -217,12 +218,17 @@ function renderLive(live, state) {
   });
 
   $('tv-call').textContent = state.call.replace(/-/g, ' – ');
+  $('tv-call').classList.toggle('long', state.call.length >= 7);
   $('tv-caption').textContent = `${firstName(state.server)} serving from the ${state.serveCourt}`;
   const gp = $('tv-gamepoint');
-  gp.hidden = !state.gamePoint;
+  const winBy2 = !state.gamePoint && Math.min(state.scores.A, state.scores.B) >= state.target - 1;
+  gp.hidden = !state.gamePoint && !winBy2;
   if (state.gamePoint) {
     gp.textContent = `Game point · ${sideNames(setup, state.servingSide)}`;
     gp.className = 'tv-gamepoint side-' + state.servingSide.toLowerCase();
+  } else if (winBy2) {
+    gp.textContent = 'Win by 2';
+    gp.className = 'tv-gamepoint tv-winby2';
   }
 
   const pA = Math.round(model.chanceA(state) * 100);
@@ -276,7 +282,7 @@ function renderFinal(live, state) {
   const tiles = [
     ['Game time', formatLiveClock(summary.durationSec)],
     ['Rallies', summary.rallyCount],
-    ['Side-outs', summary.sideOuts],
+    ['Side outs', summary.sideOuts],
     ['Best run', `${Math.max(summary.longestRun.A, summary.longestRun.B)} pts`],
     ['Top server', `${firstName(top)} · ${summary.players[top].servePoints}`],
   ];
@@ -289,7 +295,8 @@ function renderFinal(live, state) {
   shown = { requestId: live.requestId, events: live.events.length };
   if (celebrated !== live.requestId) {
     celebrated = live.requestId;
-    requestAnimationFrame(() => fireConfetti($('tv-confetti'), 180));
+    const palette = typeof teamConfettiPalette === 'function' ? teamConfettiPalette(setup.colors, w) : null;
+    requestAnimationFrame(() => fireConfetti($('tv-confetti'), 180, palette));
   }
 }
 

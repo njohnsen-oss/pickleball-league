@@ -15,7 +15,9 @@ const LIVE_STORAGE_KEY = 'pickleballLiveGame';
 const TAP_GUARD_MS = 350; // taps closer together than this are a double-tap
 
 let roster = [];
-let draft = { format: 'Doubles', slots: { a1: '', a2: '', b1: '', b2: '' }, firstServingSide: 'A', target: LIVE_DEFAULT_TARGET };
+let draft = { format: 'Doubles', slots: { a1: '', a2: '', b1: '', b2: '' }, firstServingSide: 'A', target: LIVE_DEFAULT_TARGET,
+  // Team colors (js/team-colors.js); each phone remembers the last pair used.
+  colors: typeof loadLastTeamColors === 'function' ? loadLastTeamColors() : { A: '#F6F1E7', B: '#F25C43' } };
 let game = null; // { setup, events, requestId, saved: null | { gameId, deltaA, deltaB } }
 let lastTapAt = 0;
 // After Start, Point/Fault wait for the TV's 1.2s start animation: the TV gets
@@ -146,9 +148,119 @@ function renderSetup() {
   }
 
   $('live-start').disabled = !full;
+  renderColorChips();
+}
+
+// ---------- team colors ----------
+
+function teamLabel(names, side) {
+  return names.filter(Boolean).map(firstName).join(' & ') || `Side ${side}`;
+}
+
+/* Each lineup card shows its team's color; tapping it opens the sheet. */
+function renderColorChips() {
+  if (typeof TEAM_COLOR_PRESETS === 'undefined') return;
+  draft.colors = normalizeTeamColors(draft.colors);
+  applyTeamColors(document.body, draft.colors);
+  ['A', 'B'].forEach((side) => {
+    const chip = $('live-color-chip-' + side.toLowerCase());
+    if (chip) chip.innerHTML = `<span class="live-dot side-${side.toLowerCase()}"></span>${escapeHtml(teamColorName(draft.colors[side]))}<span class="live-color-chip-edit">Color ▾</span>`;
+  });
+  if (colorSheetSide) renderColorSheet();
+}
+
+let colorSheetSide = null;
+let colorSheetCloseTimer = null;
+let colorSheetBefore = null; // both colors as they were when the sheet opened
+
+function renderColorSheet() {
+  const side = colorSheetSide;
+  if (!side) return;
+  const mine = draft.colors[side];
+  // Only a team that's already picked can block a color; an unpicked team's
+  // default just moves out of the way (see pickTeamColor).
+  const otherSide = side === 'A' ? 'B' : 'A';
+  const other = sideFull(otherSide) ? draft.colors[otherSide] : null;
+  const { sideA, sideB } = draftSides();
+  const label = teamLabel(side === 'A' ? sideA : sideB, side);
+  $('live-color-title').textContent = `Pick a color for ${label}`;
+  $('live-color-preview-one').innerHTML = `<span class="side-${side.toLowerCase()}">${escapeHtml(label)} · ${escapeHtml(teamColorName(mine))}</span>`;
+  const isPreset = TEAM_COLOR_PRESETS.some((p) => p.hex === mine);
+  const swatches = TEAM_COLOR_PRESETS.map((p) => {
+    const blocked = p.hex !== mine && !checkTeamColor(p.hex, other).ok;
+    const cls = ['live-swatch'];
+    if (p.hex === mine) cls.push('selected');
+    if (blocked) cls.push('blocked');
+    return `<button type="button" class="${cls.join(' ')}" data-hex="${p.hex}" style="--sw:${p.hex};--sw-ink:${teamInkFor(p.hex)}"`
+      + ` aria-pressed="${p.hex === mine}" aria-label="${p.name}${blocked ? ', too close to the other team' : ''}">${p.name}</button>`;
+  }).join('');
+  const custom = `<label class="live-swatch custom${isPreset ? '' : ' selected'}"${isPreset ? '' : ` style="--sw:${mine};--sw-ink:${teamInkFor(mine)}"`}>`
+    + `<span>Custom</span><input type="color" value="${mine.toLowerCase()}" aria-label="Custom color"></label>`;
+  $('live-color-swatches').innerHTML = swatches + custom;
+}
+
+function openColorSheet(side) {
+  if (typeof TEAM_COLOR_PRESETS === 'undefined') return;
+  clearTimeout(colorSheetCloseTimer);
+  colorSheetSide = side;
+  colorSheetBefore = { ...draft.colors };
+  $('live-color-msg').hidden = true;
+  renderColorSheet();
+  $('live-color-sheet').hidden = false;
+  requestAnimationFrame(() => $('live-color-sheet').classList.add('open'));
+}
+
+// save=true keeps the picked color; false (tap outside, Escape) restores both
+// colors, including any the other team was slid off.
+function closeColorSheet(save) {
+  if (save) saveLastTeamColors(draft.colors);
+  else if (colorSheetBefore) { draft.colors = colorSheetBefore; renderColorChips(); }
+  colorSheetBefore = null;
+  colorSheetSide = null;
+  $('live-color-sheet').classList.remove('open');
+  colorSheetCloseTimer = setTimeout(() => { $('live-color-sheet').hidden = true; }, 200);
+}
+
+let colorMsgTimer = null;
+function showColorMsg(text) {
+  const el = $('live-color-msg');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(colorMsgTimer);
+  colorMsgTimer = setTimeout(() => { el.hidden = true; }, 3500);
+}
+
+// rerender=false while a custom color is being dragged: rebuilding the
+// swatches would close the phone's color picker mid-drag.
+function pickTeamColor(side, hex, rerender) {
+  const otherSide = side === 'A' ? 'B' : 'A';
+  const otherPicked = sideFull(otherSide);
+  const check = checkTeamColor(hex, otherPicked ? draft.colors[otherSide] : null);
+  if (!check.ok) {
+    showColorMsg(check.reason);
+    if (rerender) renderColorSheet();
+    return false;
+  }
+  $('live-color-msg').hidden = true;
+  const next = { ...draft.colors, [side]: teamNormalizeHex(hex) };
+  // The other team hasn't been picked yet: if its default now clashes, slide
+  // it to the first preset that doesn't.
+  if (!otherPicked && !checkTeamColor(next[otherSide], next[side]).ok) {
+    const free = TEAM_COLOR_PRESETS.find((p) => checkTeamColor(p.hex, next[side]).ok);
+    if (free) next[otherSide] = free.hex;
+  }
+  draft.colors = next;
+  if (rerender) renderColorChips();
+  else applyTeamColors(document.body, draft.colors);
+  return true;
+}
+
+function sideFull(side) {
+  return slotIds().filter((id) => id[0] === side.toLowerCase()).every((id) => draft.slots[id]);
 }
 
 function togglePlayer(name) {
+  const wasFull = { A: sideFull('A'), B: sideFull('B') };
   const held = slotIds().find((id) => draft.slots[id] === name);
   if (held) draft.slots[held] = '';
   else {
@@ -157,6 +269,9 @@ function togglePlayer(name) {
     draft.slots[empty] = name;
   }
   renderSetup();
+  // The tap that completes a team brings up that team's color sheet.
+  const justFilled = ['A', 'B'].find((side) => !wasFull[side] && sideFull(side));
+  if (justFilled) openColorSheet(justFilled);
 }
 
 function sortByRecency(players, games) {
@@ -198,6 +313,7 @@ function startGame() {
       sideB,
       firstServingSide: draft.firstServingSide,
       target: draft.target,
+      colors: typeof normalizeTeamColors === 'function' ? normalizeTeamColors(draft.colors) : undefined,
       startedAt: Date.now(),
       oddsA: roster.length ? oddsForA(sideA, sideB) : null,
     },
@@ -279,7 +395,11 @@ function renderScoring(state) {
   $('live-call-caption').textContent = state.doubles
     ? `${firstName(state.server)} serving · ${state.serverNumber === 1 ? '1st' : '2nd'} server · ${state.serveCourt} court`
     : `${firstName(state.server)} serving · ${state.serveCourt} court`;
-  $('live-game-point').style.display = state.gamePoint ? 'inline-flex' : 'none';
+  const winBy2 = !state.gamePoint && Math.min(state.scores.A, state.scores.B) >= state.target - 1;
+  const gpEl = $('live-game-point');
+  gpEl.textContent = state.gamePoint ? 'Game point' : 'Win by 2';
+  gpEl.classList.toggle('winby2', winBy2);
+  gpEl.style.display = state.gamePoint || winBy2 ? 'inline-flex' : 'none';
 
   ['A', 'B'].forEach((side) => {
     const tile = $('live-team-' + side.toLowerCase());
@@ -347,7 +467,7 @@ function renderFinal(state) {
   const tiles = [
     ['Game time', formatLiveClock(summary.durationSec)],
     ['Rallies', summary.rallyCount],
-    ['Side-outs', summary.sideOuts],
+    ['Side outs', summary.sideOuts],
     ['Best run', `${best} pts`],
   ];
   $('live-final-sub').innerHTML = tiles.map(([k, v]) => `<div class="live-stat"><span>${k}</span><b>${escapeHtml(v)}</b></div>`).join('');
@@ -375,7 +495,8 @@ function renderFinal(state) {
   }
   if (celebratedGame !== game.requestId) {
     celebratedGame = game.requestId;
-    requestAnimationFrame(() => fireConfetti($('live-confetti')));
+    const palette = typeof teamConfettiPalette === 'function' ? teamConfettiPalette(setup.colors, w) : null;
+    requestAnimationFrame(() => fireConfetti($('live-confetti'), 90, palette));
   }
 }
 
@@ -433,6 +554,8 @@ function backToSetup(keepLineup, swapSides) {
     draft.format = setup.format;
     draft.target = setup.target;
     draft.slots = { a1: a[0] || '', a2: a[1] || '', b1: b[0] || '', b2: b[1] || '' };
+    // Colors stay with the people: a swapped rematch swaps them too.
+    if (setup.colors) draft.colors = swapSides ? { A: setup.colors.B, B: setup.colors.A } : { ...setup.colors };
   } else if (!keepLineup) {
     draft.slots = { a1: '', a2: '', b1: '', b2: '' };
   }
@@ -592,6 +715,7 @@ function render() {
   $('live-scoring').style.display = screen === 'scoring' ? 'block' : 'none';
   $('live-final').style.display = screen === 'final' ? 'block' : 'none';
   document.body.classList.toggle('live-in-progress', screen === 'scoring');
+  if (typeof applyTeamColors === 'function') applyTeamColors(document.body, game ? game.setup.colors : draft.colors);
 
   clearInterval(clockTimer);
   clockTimer = null;
@@ -647,6 +771,23 @@ $('live-team-slots').addEventListener('click', (e) => {
   }
 });
 
+$('live-team-slots').addEventListener('click', (e) => {
+  const chip = e.target.closest('.live-color-chip');
+  if (chip) openColorSheet(chip.dataset.side);
+});
+$('live-color-sheet').addEventListener('click', (e) => {
+  if (e.target.closest('[data-close]')) { closeColorSheet(false); return; }
+  const btn = e.target.closest('button.live-swatch');
+  if (btn && colorSheetSide) pickTeamColor(colorSheetSide, btn.dataset.hex, true);
+});
+$('live-color-sheet').addEventListener('input', (e) => {
+  if (e.target.type === 'color' && colorSheetSide) pickTeamColor(colorSheetSide, e.target.value, false);
+});
+$('live-color-sheet').addEventListener('change', (e) => {
+  if (e.target.type === 'color' && colorSheetSide) pickTeamColor(colorSheetSide, e.target.value, true);
+});
+$('live-color-done').addEventListener('click', () => closeColorSheet(true));
+
 $('live-clear').addEventListener('click', () => { draft.slots = { a1: '', a2: '', b1: '', b2: '' }; renderSetup(); });
 $('live-start').addEventListener('click', startGame);
 $('live-point').addEventListener('click', () => tap('Point'));
@@ -674,7 +815,11 @@ $('live-broadcast-toggle').addEventListener('change', (e) => {
   try { localStorage.setItem(LIVE_BROADCAST_KEY, e.target.checked ? 'on' : 'off'); } catch (err) { /* ignore */ }
   if (e.target.checked) broadcastGame(); else setBroadcastStatus('off');
 });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('live-share').hidden) closeShareSheet(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (!$('live-share').hidden) closeShareSheet();
+  if (!$('live-color-sheet').hidden) closeColorSheet(false);
+});
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible' || !game) return;

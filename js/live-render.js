@@ -374,7 +374,10 @@ function animateCourtMoves(courtHost, prev, next, opts = {}) {
     const [cx, cy] = contact;
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('class', 'fx-spark');
-    const colors = ['#D9E03C', '#FFFFFF', '#F25C43'];
+    // Neon, white and the scoring team's own color (set by js/team-colors.js).
+    let teamColor = '';
+    try { teamColor = getComputedStyle(document.body).getPropertyValue('--team-' + moves[0].side.toLowerCase()).trim(); } catch (err) { /* keep the default */ }
+    const colors = ['#D9E03C', '#FFFFFF', teamColor || '#F25C43'];
     let html = `<circle class="fx-spark-flash" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9"></circle>`;
     for (let i = 0; i < 10; i += 1) html += `<circle class="fx-spark-dot" cx="0" cy="0" r="${i % 2 ? 1.6 : 2.2}" fill="${colors[i % 3]}"></circle>`;
     g.innerHTML = html;
@@ -406,7 +409,7 @@ function liveRallyKind(rally, nextServingSide, doubles) {
   return doubles ? 'second' : 'sideout';
 }
 
-function fireConfetti(canvas, count = 90) {
+function fireConfetti(canvas, count = 90, palette = null) {
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!canvas || reduced || !canvas.getContext) return;
   const rect = canvas.getBoundingClientRect();
@@ -416,7 +419,7 @@ function fireConfetti(canvas, count = 90) {
   canvas.height = rect.height * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  const colors = ['#D9E03C', '#F25C43', '#F6F1E7', '#FF7A62', '#FFFFFF', '#AFBBD3'];
+  const colors = palette && palette.length ? palette : ['#D9E03C', '#F25C43', '#F6F1E7', '#FF7A62', '#FFFFFF', '#AFBBD3'];
   const speed = Math.max(1, rect.width / 360);
   const bits = Array.from({ length: count }, (_, i) => {
     const a = Math.random() * Math.PI - Math.PI; // upward fan
