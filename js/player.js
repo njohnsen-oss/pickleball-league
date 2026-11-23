@@ -341,12 +341,15 @@ function loadDuprEstimate() {
   if (!el || !name || typeof duprStyleRatings !== 'function') return;
   let board = null;
   let games = null;
+  let anchor = null;
   const paint = () => {
     if (!board || !games) return;
-    el.textContent = formatDuprStyle(duprStyleRatings(board, games).ratings[name]);
+    const opts = anchor && anchor.player ? { ANCHOR: { player: anchor.player, rating: anchor.rating } } : undefined;
+    el.textContent = formatDuprStyle(duprStyleRatings(board, games, opts).ratings[name]);
   };
   apiGetCached('getLeaderboard', null, (data) => { board = data; paint(); }).catch(() => {});
   apiGetCached('getGames', null, (data) => { games = data; paint(); }).catch(() => {});
+  apiGetCached('getLeagueName', null, (data) => { anchor = data && data.duprAnchor; paint(); }).catch(() => {});
 }
 
 loadPlayerStats();

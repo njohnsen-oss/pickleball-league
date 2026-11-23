@@ -73,6 +73,55 @@ function refreshPasscodeStatus() {
 
 window.addEventListener(ADMIN_MODE_EVENT, refreshPasscodeStatus);
 
+// ---- DUPR estimate anchor (league-wide, stored next to the league name) ----
+
+async function loadDuprAnchor() {
+  if (!APPS_SCRIPT_URL) return;
+  const select = document.getElementById('dupr-anchor-player');
+  const rating = document.getElementById('dupr-anchor-rating');
+  if (!select) return;
+  try {
+    const [players, settings] = await Promise.all([apiGet('getLeaderboard'), apiGet('getLeagueName')]);
+    const anchor = settings && settings.duprAnchor;
+    const names = (players || []).filter((p) => !p.Archived).map((p) => p.Name).sort();
+    select.innerHTML = '<option value="">Nobody yet (league average shows as 3.50)</option>'
+      + names.map((n) => `<option value="${n.replace(/"/g, '&quot;')}">${n.replace(/</g, '&lt;')}</option>`).join('');
+    if (anchor) { select.value = anchor.player; rating.value = Number(anchor.rating).toFixed(3); }
+  } catch (err) {
+    // Non-fatal: the fields just stay empty.
+  }
+}
+
+async function saveDuprAnchor(clear) {
+  const statusEl = document.getElementById('dupr-anchor-status');
+  const player = clear ? '' : document.getElementById('dupr-anchor-player').value;
+  const rating = clear ? '' : document.getElementById('dupr-anchor-rating').value;
+  statusEl.style.display = 'block';
+  if (!clear && (!player || !(Number(rating) >= 2 && Number(rating) <= 8))) {
+    statusEl.className = 'status error';
+    statusEl.textContent = 'Pick a player and enter a DUPR between 2.000 and 8.000.';
+    return;
+  }
+  const passcode = await getOrPromptPasscode();
+  if (!passcode) return;
+  statusEl.className = 'status';
+  statusEl.textContent = 'Saving…';
+  try {
+    await apiPost('setDuprAnchor', { passcode, player, rating: Number(rating) });
+    invalidateAllCache();
+    statusEl.className = 'status success';
+    statusEl.textContent = clear
+      ? 'Cleared. The estimate is back to the placeholder scale (league average 3.50).'
+      : `Saved. Every DUPR est. now lines up to ${player}'s ${Number(rating).toFixed(3)}.`;
+    if (clear) { document.getElementById('dupr-anchor-player').value = ''; document.getElementById('dupr-anchor-rating').value = ''; }
+  } catch (err) {
+    statusEl.className = 'status error';
+    statusEl.textContent = /Unknown action/i.test(err.message)
+      ? 'The league backend needs the Phase 3 update before this can be saved.'
+      : 'Could not save: ' + err.message;
+  }
+}
+
 async function loadLeagueName() {
   if (!APPS_SCRIPT_URL) return;
   try {
@@ -213,6 +262,9 @@ function initSettingsPage() {
   });
 
   loadLeagueName();
+  loadDuprAnchor();
+  document.getElementById('save-dupr-anchor-btn').addEventListener('click', () => saveDuprAnchor(false));
+  document.getElementById('clear-dupr-anchor-btn').addEventListener('click', () => saveDuprAnchor(true));
 
   document.getElementById('save-league-name-btn').addEventListener('click', async () => {
     const nameInput = document.getElementById('league-name-input');

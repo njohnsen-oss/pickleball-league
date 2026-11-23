@@ -657,6 +657,17 @@ function broadcastLabel() {
 
 function renderBroadcastStatus() {
   const label = broadcastLabel();
+  // A refused TV link used to show only as a red dot. Say why where the scorer can see it.
+  const alert = $('live-tv-alert');
+  if (alert) {
+    const refused = broadcast.status === 'error' && /passcode/i.test(broadcast.error);
+    alert.hidden = !refused;
+    if (refused) {
+      alert.textContent = /not configured/i.test(broadcast.error)
+        ? 'TV link refused: this league has no admin passcode set yet. Scoring still works.'
+        : 'TV link refused: the admin passcode on this phone doesn’t match this league. Scoring still works; unlock Admin again with the right one.';
+    }
+  }
   document.querySelectorAll('.live-sync-dot').forEach((dot) => { dot.className = 'live-sync-dot ' + label.cls; });
   const status = $('live-share-status');
   if (status) { status.textContent = label.text; status.className = 'live-share-status ' + label.cls; }

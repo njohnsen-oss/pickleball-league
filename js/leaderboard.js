@@ -3,12 +3,18 @@ let currentGames = [];
 let currentGamesLoaded = false;
 let currentCalibration = null;
 
-/* Which number the podium and cards rank by: the league rating (the Elo-scale
-   model in Code.gs) or the DUPR-style estimate (js/dupr-style.js). The
-   desktop table always shows both. Remembered per browser. */
+/* Which method the podium and cards rank by (js/rankings.js: League rating,
+   DUPR est., Win %, +/−). The desktop table always shows every number.
+   Remembered per browser. */
 const RATING_VIEW_KEY = 'pickleballRatingView';
-let ratingView = (() => { try { return localStorage.getItem(RATING_VIEW_KEY) === 'dupr' ? 'dupr' : 'league'; } catch (e) { return 'league'; } })();
-let currentDupr = null;
+let ratingView = (() => {
+  try {
+    const v = localStorage.getItem(RATING_VIEW_KEY);
+    return typeof RANKING_METHODS !== 'undefined' && RANKING_METHODS[v] ? v : 'league';
+  } catch (e) { return 'league'; }
+})();
+let currentRanking = null; // rankingContext(...) once the games are in
+let currentAnchor = null;  // the league's DUPR anchor ({ player, rating }) from getLeagueName
 
 function splitRecordForPlayer(player, format) {
   if (currentGamesLoaded) {
@@ -151,17 +157,24 @@ function renderCalibration() {
 /* One computed shape per player, so the table row and the mobile card stay in
    sync and the per-format record scan only runs once per player. */
 function playerView(p, rankedPosition) {
-  const dupr = currentDupr ? currentDupr.ratings[p.Name] : undefined;
-  const useDupr = ratingView === 'dupr' && Number.isFinite(dupr);
   // Guarded: a phone can briefly run this against a cached index.html that
-  // doesn't load js/dupr-style.js yet.
-  const fmt = typeof formatDuprStyle === 'function' ? formatDuprStyle : () => '–';
+  // doesn't load js/rankings.js yet.
+  const methods = typeof RANKING_METHODS !== 'undefined' ? RANKING_METHODS : null;
+  const ctx = currentRanking;
+  const show = (key) => {
+    if (!methods || !ctx) return '–';
+    const v = methods[key].value(p, ctx);
+    return Number.isFinite(v) ? methods[key].format(v) : '–';
+  };
+  const method = methods && ctx ? methods[ratingView] : null;
+  const mv = method ? method.value(p, ctx) : NaN;
+  const useMethod = ratingView !== 'league' && Number.isFinite(mv);
   return {
     player: p,
-    dupr,
-    duprText: fmt(dupr),
-    metricText: useDupr ? fmt(dupr) : String(Math.round(p.Elo)),
-    metricLabel: useDupr ? 'DUPR' : 'rating',
+    duprText: show('dupr'),
+    diffText: show('pointdiff'),
+    metricText: useMethod ? method.format(mv) : String(Math.round(p.Elo)),
+    metricLabel: useMethod ? method.unit : 'rating',
     rank: p.IsProvisional ? 'P' : rankedPosition,
     isTop: !p.IsProvisional && rankedPosition === 1,
     elo: Math.round(p.Elo),
@@ -190,6 +203,7 @@ function leaderboardRow(v) {
     <td class="numeric-column">${v.duprText}</td>
     <td class="record-column">${v.record}</td>
     <td class="numeric-column">${v.winPct}%</td>
+    <td class="numeric-column">${v.diffText}</td>
     <td>${confidenceCellHtml(p)}</td>
     <td class="numeric-column">${v.games}</td>
     <td class="record-column">${v.singles}</td>
@@ -298,15 +312,15 @@ async function loadLeaderboard() {
     );
     body.innerHTML = '';
     cards.innerHTML = '';
-    if (currentGamesLoaded && typeof duprStyleRatings === 'function') {
-      currentDupr = duprStyleRatings(currentLeaderboard, currentGames);
+    if (currentGamesLoaded && typeof rankingContext === 'function') {
+      currentRanking = rankingContext(currentLeaderboard, currentGames, currentAnchor);
       const anchorEl = document.getElementById('dupr-anchor-text');
-      if (anchorEl) anchorEl.textContent = currentDupr.anchorText;
+      if (anchorEl && currentRanking.dupr) anchorEl.textContent = currentRanking.dupr.anchorText;
     }
-    // In DUPR view the list is ordered by the estimate; provisional players
-    // keep their "P" either way.
-    const ordered = ratingView === 'dupr' && currentDupr
-      ? currentLeaderboard.slice().sort((a, b) => (currentDupr.ratings[b.Name] || 0) - (currentDupr.ratings[a.Name] || 0))
+    // Any view other than the league rating re-sorts the list by its own
+    // number; provisional players keep their "P" either way.
+    const ordered = ratingView !== 'league' && currentRanking && typeof sortByRanking === 'function'
+      ? sortByRanking(ratingView, currentLeaderboard, currentRanking)
       : currentLeaderboard;
     let rankedPosition = 0;
     const rows = ordered.map((p) => {
@@ -334,7 +348,11 @@ async function loadLeaderboard() {
 
   const viewToggle = document.getElementById('rating-view');
   if (viewToggle) {
-    const paintToggle = () => viewToggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === ratingView));
+    const paintToggle = () => {
+      viewToggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === ratingView));
+      const help = document.getElementById('rating-view-help');
+      if (help && typeof RANKING_METHODS !== 'undefined') help.textContent = RANKING_METHODS[ratingView].explain;
+    };
     paintToggle();
     viewToggle.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-view]');
@@ -374,7 +392,13 @@ async function loadLeaderboard() {
     renderCalibration();
   }).catch(() => {});
 
-  await Promise.all([leaderboardPromise, gamesPromise, calibrationPromise]);
+  // The league's DUPR anchor (Settings) lines the estimate up to a real DUPR.
+  const settingsPromise = apiGetCached('getLeagueName', null, (data) => {
+    currentAnchor = data && data.duprAnchor ? data.duprAnchor : null;
+    render();
+  }).catch(() => {});
+
+  await Promise.all([leaderboardPromise, gamesPromise, calibrationPromise, settingsPromise]);
 }
 
 document.getElementById('export-btn').addEventListener('click', exportLeaderboardCsv);
