@@ -907,11 +907,16 @@ body.matchmaking-page header.top-bar h1 { font-size: clamp(1.4rem, 6.4vw, 2.1rem
 /* Live scorer: set teams as one-tap picks above the player grid. */
 .live-team-picks { margin: 14px 0 2px; }
 .live-team-picks[hidden] { display: none; }
-.live-team-pick-row { display: flex; gap: 8px; margin: 6px -2px 0; padding: 2px 2px 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
-.live-team-pick-row::-webkit-scrollbar { display: none; }
-.team-pick { --tm: var(--panel-raised); --tm-ink: var(--text); flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0 14px 0 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 600 0.88rem/1 Inter, sans-serif; white-space: nowrap; cursor: pointer; }
+.live-team-pick-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 0 0 6px; }
+.team-pick { --tm: var(--panel-raised); --tm-ink: var(--text); flex: none; max-width: 100%; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; margin: 0; padding: 0 14px 0 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: var(--text); font: 600 0.88rem/1 Inter, sans-serif; white-space: nowrap; cursor: pointer; }
 .team-pick .team-avs span { width: 28px; height: 28px; font-size: 0.62rem; }
 .team-pick.picked.side-a { border-color: var(--team-a); background: var(--team-a-soft); }
 .team-pick.picked.side-b { border-color: var(--team-b); background: var(--team-b-soft); }
+.team-pick-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .team-pick-side { padding: 2px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.1); font-size: 0.7rem; font-weight: 800; }
 .team-pick:disabled { opacity: 0.4; cursor: default; }
+/* Log a Game has no side colors: a picked set team shows in its own color. */
+.team-pick.picked:not(.side-a):not(.side-b) { border-color: var(--coral); background: var(--panel-raised); }
+/* Log a Game after saving: Rematch, Swap sides, Undo (Balance was removed;
+   Matchmaking makes balanced games). */
+.post-game-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
