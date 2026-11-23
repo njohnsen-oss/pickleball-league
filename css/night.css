@@ -704,3 +704,60 @@ body.matchup-page header.top-bar h1 { font-size: 1.45rem; line-height: 1.15; }
 
 /* Double-digit calls (10 – 10 – 1) shrink a step so they stay inside the TV's centre column. */
 .tv-call.long { font-size: clamp(26px, min(7.6vh, 4.9vw), 104px); }
+
+/* ---- Matchmaking (Phase 2) ---- */
+.mm-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 18px 0 6px; }
+.mm-section-head h2 { margin: 0; }
+.mm-count { padding: 4px 10px; border-radius: 999px; background: var(--panel-raised); color: var(--neon); font-size: 0.78rem; font-weight: 700; }
+.mm-head-actions { display: flex; gap: 6px; }
+.matchmaking-page .player-chip.picked { border-color: var(--neon); background: rgba(217, 224, 60, 0.08); }
+.matchmaking-page .player-chip.picked .chip-slot { background: var(--neon); color: var(--night); }
+.matchmaking-page .chip-slot { border: 1.5px solid var(--line); }
+.mm-settings { margin-top: 4px; }
+.mm-stepper { display: inline-flex; align-items: center; width: fit-content; border-radius: 12px; background: var(--panel); }
+.mm-stepper button { width: 48px; height: 44px; border: 0; background: transparent; color: var(--text); font: inherit; font-size: 1.3rem; font-weight: 700; }
+.mm-stepper b { min-width: 34px; text-align: center; font-family: var(--font-display); font-size: 1.3rem; font-weight: 600; }
+#mm-mode button { font-size: 0.85rem; }
+#mm-mode-help { margin: 6px 0 0; }
+.mm-swap-hint { margin: 0 0 10px; color: var(--mist); font-size: 0.8rem; }
+.mm-swap-hint.active { color: var(--neon); font-weight: 700; }
+.mm-game { margin-bottom: 10px; padding: 12px; border-radius: 18px; background: var(--panel); }
+.mm-game-head { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--mist-dim); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.mm-team { display: flex; gap: 6px; }
+.mm-name {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 6px 10px;
+  border: 1.5px solid transparent; border-radius: 12px; background: var(--panel-raised); color: var(--text);
+  font: inherit; font-size: 0.86rem; font-weight: 600; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  -webkit-tap-highlight-color: transparent;
+}
+.mm-name.picked { border-color: var(--neon); box-shadow: 0 0 0 2px rgba(217, 224, 60, 0.25); }
+.mm-av { width: 28px; height: 28px; flex: none; display: grid; place-items: center; border-radius: 50%; font-size: 0.68rem; font-weight: 800; }
+.mm-team.side-a .mm-av { background: var(--cream); color: var(--night); }
+.mm-team.side-b .mm-av { background: var(--coral); color: #FFFFFF; }
+.mm-vs { height: 6px; margin: 8px 2px; overflow: hidden; border-radius: 999px; background: var(--coral); }
+.mm-vs i { display: block; height: 100%; background: var(--cream); box-shadow: 2px 0 0 var(--panel); }
+.mm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.mm-actions .btn { margin-top: 0; padding: 11px 6px; font-size: 0.95rem; }
+.mm-sitout { margin-top: 4px; }
+.mm-sitout-names { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.mm-sitout .mm-name { flex: 0 1 auto; }
+.mm-sitout .mm-av { background: var(--line); color: var(--text); }
+.mm-earlier ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.mm-earlier li { padding: 10px 12px; border-radius: 12px; background: var(--panel); color: var(--mist); font-size: 0.82rem; line-height: 1.4; }
+.mm-earlier li b { margin-right: 4px; color: var(--text); }
+.mm-new-night { display: block; margin: 22px auto 0; padding: 10px; border: 0; background: none; color: var(--coral-light); font: inherit; font-size: 0.86rem; font-weight: 700; }
+.live-mm-link {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 14px; padding: 12px 14px;
+  border: 1px solid var(--line); border-radius: 14px; background: var(--panel); color: var(--text); text-decoration: none; font-size: 0.84rem;
+}
+.live-mm-link b { font-family: var(--font-display); font-size: 1rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.live-mm-link span { color: var(--mist); }
+/* "Leaderboard" and "Matchmaking" are long titles; on a phone they share the
+   header with the gear and the Admin pill, so the title steps down and the
+   pill shows just its lock. */
+body.leaderboard-page header.top-bar h1,
+body.matchmaking-page header.top-bar h1 { font-size: clamp(1.4rem, 6.4vw, 2.1rem); }
+@media (max-width: 480px) {
+  body.leaderboard-page .admin-lock-label,
+  body.matchmaking-page .admin-lock-label { display: none; }
+}
