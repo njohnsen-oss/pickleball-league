@@ -17,6 +17,8 @@ function initials(name) {
 }
 
 function sideNames(setup, side, joiner = ' & ') {
+  const team = setup.teams && setup.teams[side];
+  if (team && team.name) return team.name; // a named set team
   return (side === 'A' ? setup.sideA : setup.sideB).map(firstName).join(joiner);
 }
 

@@ -132,7 +132,7 @@ function renderSetup() {
     : `Tap ${remaining} more player${remaining === 1 ? '' : 's'}`;
 
   const { sideA, sideB } = draftSides();
-  const label = (names) => names.filter(Boolean).map(firstName).join(' & ') || '—';
+  const label = (names) => (names.filter(Boolean).length ? teamLabel(names, '') : '—');
   document.querySelector('#live-first-server [data-side="A"]').innerHTML = `<span class="live-dot side-a"></span>${escapeHtml(label(sideA))}`;
   document.querySelector('#live-first-server [data-side="B"]').innerHTML = `<span class="live-dot side-b"></span>${escapeHtml(label(sideB))}`;
   document.querySelectorAll('#live-first-server button').forEach((b) => b.classList.toggle('active', b.dataset.side === draft.firstServingSide));
@@ -148,13 +148,135 @@ function renderSetup() {
   }
 
   $('live-start').disabled = !full;
+  renderTeamPicks();
   renderColorChips();
 }
 
 // ---------- team colors ----------
 
 function teamLabel(names, side) {
+  const team = names.length === 2 ? setTeamOf(names[0], names[1]) : null;
+  if (team && team.Name) return team.Name;
   return names.filter(Boolean).map(firstName).join(' & ') || `Side ${side}`;
+}
+
+// ---------- set teams (Teams page) ----------
+// A doubles side that is a set team starts in the team's own color (the
+// color sheet still comes up to confirm) and goes by the team's name.
+
+let setTeams = [];
+let setTeamApplied = { A: '', B: '' }; // team id whose color was last put on each side
+
+function setTeamOf(a, b) {
+  return typeof findSetTeam === 'function' ? findSetTeam(setTeams, a, b) : null;
+}
+
+function setTeamForSide(side) {
+  if (draft.format !== 'Doubles' || !sideFull(side)) return null;
+  const k = side.toLowerCase();
+  return setTeamOf(draft.slots[k + '1'], draft.slots[k + '2']);
+}
+
+// Only when a side has just become a set team: a color picked by hand
+// afterwards stays put.
+function applySetTeamColors() {
+  if (typeof TEAM_COLOR_PRESETS === 'undefined') return;
+  ['A', 'B'].forEach((side) => {
+    const team = setTeamForSide(side);
+    const id = team ? team.TeamId : '';
+    if (id === setTeamApplied[side]) return;
+    setTeamApplied[side] = id;
+    if (!team || !team.Color) return;
+    const otherSide = side === 'A' ? 'B' : 'A';
+    if (checkTeamColor(team.Color, sideFull(otherSide) ? draft.colors[otherSide] : null).ok) pickTeamColor(side, team.Color, true);
+  });
+}
+
+/* Set teams as one-tap picks above the player grid: a tap puts both
+   players on a side (switching to Doubles if needed), a second tap takes
+   them off. */
+function teamSideNow(team) {
+  if (draft.format !== 'Doubles') return '';
+  const key = teamKey(team.Player1, team.Player2);
+  return ['A', 'B'].find((side) => {
+    const k = side.toLowerCase();
+    return draft.slots[k + '1'] && draft.slots[k + '2'] && teamKey(draft.slots[k + '1'], draft.slots[k + '2']) === key;
+  }) || '';
+}
+
+// The side a team would go on: one that holds only (some of) its players,
+// else the first empty side. '' when there's no room.
+function teamTargetSide(team) {
+  const mine = new Set([team.Player1, team.Player2]);
+  const sideOf = (side) => {
+    const k = side.toLowerCase();
+    return [draft.slots[k + '1'], draft.format === 'Doubles' ? draft.slots[k + '2'] : ''].filter(Boolean);
+  };
+  const usable = (side) => {
+    const other = side === 'A' ? 'B' : 'A';
+    return sideOf(side).every((n) => mine.has(n)) && !sideOf(other).some((n) => mine.has(n));
+  };
+  const partial = ['A', 'B'].find((side) => sideOf(side).length && usable(side));
+  if (partial) return partial;
+  return ['A', 'B'].find((side) => !sideOf(side).length && usable(side)) || '';
+}
+
+function rosterTeams() {
+  const names = new Set(roster.map((p) => p.Name));
+  return setTeams.filter((t) => names.has(t.Player1) && names.has(t.Player2));
+}
+
+function renderTeamPicks() {
+  const host = $('live-team-picks');
+  if (!host) return;
+  const teams = rosterTeams();
+  host.hidden = !teams.length;
+  if (!teams.length) return;
+  $('live-team-pick-row').innerHTML = teams.map((t) => {
+    const on = teamSideNow(t);
+    const target = on || teamTargetSide(t);
+    const cls = ['team-pick'];
+    if (on) cls.push('picked', 'side-' + on.toLowerCase());
+    const style = t.Color ? ` style="--tm:${escapeHtml(t.Color)};--tm-ink:${teamInkFor(t.Color)}"` : '';
+    const label = teamLabel([t.Player1, t.Player2], '');
+    return `<button type="button" class="${cls.join(' ')}" data-team="${escapeHtml(t.TeamId)}" aria-pressed="${Boolean(on)}"${!target ? ' disabled' : ''}${style}>`
+      + `<span class="team-avs" aria-hidden="true"><span>${escapeHtml(initials(t.Player1))}</span><span>${escapeHtml(initials(t.Player2))}</span></span>`
+      + `<span class="team-pick-name">${escapeHtml(label)}</span>${on ? `<span class="team-pick-side">${on}</span>` : ''}</button>`;
+  }).join('');
+}
+
+function toggleTeam(teamId) {
+  const team = setTeams.find((t) => t.TeamId === teamId);
+  if (!team) return;
+  const on = teamSideNow(team);
+  if (on) {
+    const k = on.toLowerCase();
+    draft.slots[k + '1'] = '';
+    draft.slots[k + '2'] = '';
+    renderSetup();
+    return;
+  }
+  if (draft.format !== 'Doubles') draft.format = 'Doubles';
+  const wasFull = { A: sideFull('A'), B: sideFull('B') };
+  const side = teamTargetSide(team);
+  if (!side) return;
+  const k = side.toLowerCase();
+  // Whoever is already on that side keeps their court; the partner fills the other.
+  const first = draft.slots[k + '2'] === team.Player1 || draft.slots[k + '1'] === team.Player2 ? team.Player2 : team.Player1;
+  const second = first === team.Player1 ? team.Player2 : team.Player1;
+  draft.slots[k + '1'] = first;
+  draft.slots[k + '2'] = second;
+  applySetTeamColors();
+  renderSetup();
+  if (!wasFull[side] && sideFull(side)) openColorSheet(side);
+}
+
+function loadSetTeams() {
+  if (typeof findSetTeam !== 'function') return;
+  apiGetCached('getTeams', null, (data) => {
+    setTeams = (data && data.teams) || [];
+    if (!game) { applySetTeamColors(); renderSetup(); }
+  }).catch(() => { /* an older backend without teams: lineups just use names */ });
 }
 
 /* Each lineup card shows its team's color; tapping it opens the sheet. */
@@ -272,6 +394,7 @@ function togglePlayer(name) {
     if (!empty) return;
     draft.slots[empty] = name;
   }
+  applySetTeamColors();
   renderSetup();
   // The tap that completes a team brings up that team's color sheet.
   const justFilled = ['A', 'B'].find((side) => !wasFull[side] && sideFull(side));
@@ -306,6 +429,14 @@ async function loadRoster() {
   }
 }
 
+// Rides inside the game (setup.teams) so the TV can show team names.
+function setTeamsForGame(sideA, sideB) {
+  if (draft.format !== 'Doubles') return undefined;
+  const pick = (names) => { const t = setTeamOf(names[0], names[1]); return t ? { id: t.TeamId, name: t.Name || '' } : null; };
+  const teams = { A: pick(sideA), B: pick(sideB) };
+  return teams.A || teams.B ? teams : undefined;
+}
+
 function startGame() {
   if (!lineupFull()) return;
   const { sideA, sideB } = draftSides();
@@ -318,6 +449,7 @@ function startGame() {
       firstServingSide: draft.firstServingSide,
       target: draft.target,
       colors: typeof normalizeTeamColors === 'function' ? normalizeTeamColors(draft.colors) : undefined,
+      teams: setTeamsForGame(sideA, sideB),
       from: draft.from || undefined,
       startedAt: Date.now(),
       oddsA: roster.length ? oddsForA(sideA, sideB) : null,
@@ -563,6 +695,8 @@ function backToSetup(keepLineup, swapSides) {
     draft.slots = { a1: a[0] || '', a2: a[1] || '', b1: b[0] || '', b2: b[1] || '' };
     // Colors stay with the people: a swapped rematch swaps them too.
     if (setup.colors) draft.colors = swapSides ? { A: setup.colors.B, B: setup.colors.A } : { ...setup.colors };
+    const teamId = (names) => { const t = names.length === 2 ? setTeamOf(names[0], names[1]) : null; return t ? t.TeamId : ''; };
+    setTeamApplied = { A: teamId(a), B: teamId(b) };
   } else if (!keepLineup) {
     draft.slots = { a1: '', a2: '', b1: '', b2: '' };
     draft.from = '';
@@ -774,6 +908,11 @@ $('live-first-server').addEventListener('click', (e) => {
   renderSetup();
 });
 
+$('live-team-pick-row').addEventListener('click', (e) => {
+  const btn = e.target.closest('.team-pick');
+  if (btn && !btn.disabled) toggleTeam(btn.dataset.team);
+});
+
 $('live-player-grid').addEventListener('click', (e) => {
   const btn = e.target.closest('.player-chip');
   if (btn && !btn.disabled) togglePlayer(btn.dataset.player);
@@ -870,6 +1009,7 @@ if (livePrefill && !game) {
   draft.from = livePrefill.from;
 }
 render();
+loadSetTeams();
 if (livePrefill && !game) {
   // Both teams arrived filled: ask for Side A's color, then Side B's.
   colorSheetQueue = ['B'];

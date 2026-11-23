@@ -203,7 +203,9 @@ function renderLive(live, state) {
   if (fresh) {
     model = liveWinModel(setup);
     ['A', 'B'].forEach((side) => {
-      $('tv-team-' + side.toLowerCase()).querySelector('.tv-team-players').innerHTML = teamPlayersHtml(side === 'A' ? setup.sideA : setup.sideB);
+      const team = setup.teams && setup.teams[side];
+      const nameHtml = team && team.name ? `<span class="tv-team-name">${escapeHtml(team.name)}</span>` : '';
+      $('tv-team-' + side.toLowerCase()).querySelector('.tv-team-players').innerHTML = nameHtml + teamPlayersHtml(side === 'A' ? setup.sideA : setup.sideB);
     });
   }
 
@@ -279,6 +281,9 @@ function renderFinal(live, state) {
     celebrated = live.requestId;
     const winners = w === 'A' ? setup.sideA : setup.sideB;
     const losers = w === 'A' ? setup.sideB : setup.sideA;
+    const team = setup.teams && setup.teams[w];
+    $('tv-final-team').textContent = team && team.name ? team.name : '';
+    $('tv-final-team').hidden = !(team && team.name);
     $('tv-final-avs').innerHTML = winners.map((n, i) => `<div class="tv-fav" style="--dl:${(2.9 + i * 0.35).toFixed(2)}s"><span class="tv-fav-ring">${escapeHtml(initials(n))}</span><b>${escapeHtml(firstName(n))}</b></div>`).join('');
     $('tv-final-over').innerHTML = `<span class="tv-over-avs" aria-hidden="true">${losers.map((n) => `<i>${escapeHtml(initials(n))}</i>`).join('')}</span><span>over ${escapeHtml(sideNames(setup, l))}</span>`;
     playNeonSign(fin);
