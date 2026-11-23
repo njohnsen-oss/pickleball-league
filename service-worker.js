@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v22-teams-3';
+const STATIC_CACHE = 'pickleball-static-v23-brackets-3';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -12,6 +12,7 @@ const STATIC_ASSETS = [
   './settings.html',
   './matchmaking.html',
   './teams.html',
+  './brackets.html',
   './css/style.css',
   './css/night.css',
   './js/config.js',
@@ -36,6 +37,9 @@ const STATIC_ASSETS = [
   './js/matchmaking.js',
   './js/teams-model.js',
   './js/teams.js',
+  './js/bracket-engine.js',
+  './js/bracket-sync.js',
+  './js/brackets.js',
   './js/csv.js',
   './manifest.json',
   './icons/icon-192.png',

@@ -46,12 +46,15 @@
       <a class="btn" id="continue-link" href="index.html">Continue</a>
     </div>
 
-    <h2>Admin passcode</h2>
+    <h2>Passcode</h2>
     <p class="field-help">
-      Unlocks league management on this browser. The passcode is still
-      validated by Apps Script for every change.
+      The admin passcode unlocks everything on this browser. The scorekeeper
+      passcode (optional) only records games: Log Game, Live and bracket
+      scores. Both are set in Apps Script (Project Settings &gt; Script
+      Properties: ADMIN_PASSCODE and SCORER_PASSCODE) and checked there for
+      every change.
     </p>
-    <input type="password" id="passcode-input" placeholder="Admin passcode" autocomplete="off" />
+    <input type="password" id="passcode-input" placeholder="Admin or scorekeeper passcode" autocomplete="off" />
     <div id="passcode-status" class="field-help"></div>
     <div class="button-row">
       <button type="button" class="btn" id="save-passcode-btn">Save</button>
@@ -106,6 +109,10 @@
     <a href="live-game.html">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Live
+    </a>
+    <a href="brackets.html">
+      <svg viewBox="0 0 24 24"><path d="M2 4h5v4H2M2 16h5v4H2M7 6h3v12H7M10 12h6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="12" r="2.5"/></svg>
+      Brackets
     </a>
     <a href="history.html">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>

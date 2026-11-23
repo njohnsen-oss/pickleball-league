@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Brackets — Pickleball</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;400;500;600;700&family=Oswald:wght@500;600;700&display=swap" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/night.css" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0C1730" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Pickleball" />
+</head>
+<body class="brackets-page">
+  <div class="league-banner" id="league-banner"></div>
+  <header class="top-bar"><h1>Brackets</h1><button id="settings-btn" class="settings-link" title="Change data source">⚙</button></header>
+  <main>
+    <div id="bk-loading" class="loading" role="status" aria-live="polite">Loading…</div>
+
+    <!-- All brackets -->
+    <section id="bk-list-view" hidden>
+      <a class="live-mm-link" href="matchmaking.html"><b>Matchmaking</b><span>Balanced games for who's here →</span></a>
+      <button type="button" class="primary btn admin-only" id="bk-new">New bracket</button>
+      <p class="field-help locked-only">Unlock Admin to start a bracket.</p>
+      <div id="bk-list" class="bk-list"></div>
+    </section>
+
+    <!-- New bracket -->
+    <section id="bk-create-view" class="admin-only-section" hidden>
+      <a class="bk-back" href="brackets.html">← All brackets</a>
+      <h2>New bracket</h2>
+
+      <label for="bk-name">Name</label>
+      <input type="text" id="bk-name" maxlength="40" autocomplete="off" placeholder="e.g. Fall Cup" />
+
+      <div class="live-option">
+        <span class="live-option-label">Format</span>
+        <div class="toggle-group" id="bk-format" role="group" aria-label="Format">
+          <button type="button" data-value="single" class="active">Single elimination</button>
+          <button type="button" data-value="roundrobin">Round robin</button>
+        </div>
+        <p class="field-help" id="bk-format-help"></p>
+      </div>
+
+      <div class="live-option">
+        <span class="live-option-label">Games to</span>
+        <div class="toggle-group" id="bk-target" role="group" aria-label="Games to">
+          <button type="button" data-value="11" class="active">11</button>
+          <button type="button" data-value="15">15</button>
+          <button type="button" data-value="21">21</button>
+        </div>
+      </div>
+
+      <div class="live-option">
+        <span class="live-option-label">Each match</span>
+        <div class="toggle-group" id="bk-bestof" role="group" aria-label="Each match">
+          <button type="button" data-value="1" class="active">One game</button>
+          <button type="button" data-value="3">Best of 3</button>
+        </div>
+      </div>
+
+      <div class="bk-switch-row" id="bk-final-row">
+        <span><b>Final is best of 3</b><small>Only the championship match</small></span>
+        <button type="button" class="bk-switch" id="bk-final" role="switch" aria-checked="false" aria-label="Final is best of 3"><i></i></button>
+      </div>
+      <div class="bk-switch-row">
+        <span><b>Counts toward ratings</b><small>Turn off for fun or handicap brackets</small></span>
+        <button type="button" class="bk-switch on" id="bk-counts" role="switch" aria-checked="true" aria-label="Counts toward ratings"><i></i></button>
+      </div>
+
+      <div class="live-option">
+        <span class="live-option-label">Seeding</span>
+        <div class="toggle-group" id="bk-seeding" role="group" aria-label="Seeding">
+          <button type="button" data-value="rating" class="active">By rating</button>
+          <button type="button" data-value="random">Random</button>
+        </div>
+      </div>
+
+      <h3 class="bk-sub">Teams <span id="bk-count"></span></h3>
+      <div class="live-team-picks" id="bk-team-picks" hidden>
+        <div class="live-option-label">Set teams</div>
+        <div class="live-team-pick-row" id="bk-team-row" role="group" aria-label="Set teams"></div>
+      </div>
+      <div class="live-option-label bk-pair-label">Or make a pair: tap two players</div>
+      <div class="player-grid" id="bk-player-grid"></div>
+
+      <ol class="bk-entrants" id="bk-entrants"></ol>
+      <button type="button" class="btn secondary" id="bk-shuffle" hidden>Shuffle seeds</button>
+      <div id="bk-create-status" class="status" style="display:none"></div>
+      <button type="button" class="primary btn" id="bk-create">Create bracket</button>
+    </section>
+
+    <!-- One bracket -->
+    <section id="bk-view" hidden>
+      <a class="bk-back" href="brackets.html">← All brackets</a>
+      <div class="bk-head">
+        <h2 id="bk-title"></h2>
+        <p id="bk-meta" class="bk-meta"></p>
+      </div>
+      <div id="bk-champ" class="bk-champ" hidden></div>
+      <div id="bk-next" class="bk-next"></div>
+      <div id="bk-standings"></div>
+      <div id="bk-board"></div>
+      <p class="field-help bk-tv-note">Show this bracket on a TV: open the live TV link. Between games it shows this bracket on its own.</p>
+      <button type="button" class="btn secondary admin-only bk-remove" id="bk-remove">Remove bracket</button>
+      <div id="bk-view-status" class="status" style="display:none"></div>
+    </section>
+  </main>
+
+  <!-- Match sheet -->
+  <div class="live-share bk-sheet" id="bk-sheet" hidden>
+    <div class="live-share-backdrop" data-close></div>
+    <div class="live-share-card" role="dialog" aria-modal="true" aria-labelledby="bk-sheet-title">
+      <div class="live-share-grip" aria-hidden="true"></div>
+      <h2 id="bk-sheet-title">Match</h2>
+      <p class="live-share-sub" id="bk-sheet-sub"></p>
+      <div class="bk-sheet-teams" id="bk-sheet-teams"></div>
+      <div id="bk-sheet-games" class="bk-sheet-games"></div>
+      <div class="staff-only" id="bk-sheet-actions">
+        <a class="primary btn bk-live-btn" id="bk-live-btn" href="live-game.html">Live score this game</a>
+        <div class="bk-enter" id="bk-enter">
+          <div class="live-option-label">Or enter the final score</div>
+          <div class="bk-enter-row">
+            <label><span id="bk-enter-a-label">Side A</span><input type="number" id="bk-enter-a" min="0" inputmode="numeric" /></label>
+            <label><span id="bk-enter-b-label">Side B</span><input type="number" id="bk-enter-b" min="0" inputmode="numeric" /></label>
+          </div>
+          <button type="button" class="btn" id="bk-enter-save">Save score</button>
+        </div>
+        <button type="button" class="btn secondary bk-undo admin-only" id="bk-undo" hidden>Undo last game</button>
+      </div>
+      <div id="bk-sheet-status" class="status" style="display:none"></div>
+    </div>
+  </div>
+
+  <nav class="tab-bar">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M17 5h2a2 2 0 0 1-2 2M7 5H5a2 2 0 0 0 2 2M7 3h10v6a5 5 0 0 1-10 0V3Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Leaderboard
+    </a>
+    <a href="log-game.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg>
+      Log Game
+    </a>
+    <a href="live-game.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Live
+    </a>
+    <a href="brackets.html" class="active">
+      <svg viewBox="0 0 24 24"><path d="M2 4h5v4H2M2 16h5v4H2M7 6h3v12H7M10 12h6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="12" r="2.5"/></svg>
+      Brackets
+    </a>
+    <a href="history.html">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      History
+    </a>
+    <a href="players.html">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20c0-3.3 3-6 7-6s7 2.7 7 6M16 8a3 3 0 1 0 0-6M22 20c0-2.7-2-5-5-5.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Players
+    </a>
+  </nav>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/team-colors.js"></script>
+  <script src="js/teams-model.js"></script>
+  <script src="js/bracket-engine.js"></script>
+  <script src="js/bracket-sync.js"></script>
+  <script src="js/brackets.js"></script>
+</body>
+</html>

@@ -22,11 +22,11 @@
   <div class="league-banner" id="league-banner"></div>
   <header class="top-bar"><h1>Log a Game</h1><button id="settings-btn" class="settings-link" title="Change data source">⚙</button></header>
   <main>
-    <section class="admin-required-card locked-only">
+    <section class="admin-required-card staff-locked-only">
       <div class="admin-required-icon">🔒</div>
-      <h2>Admin Mode required</h2>
-      <p>Unlock this browser to log games and manage the league.</p>
-      <button type="button" class="btn" id="unlock-log-game">Unlock Admin Mode</button>
+      <h2>Scorekeeper or Admin</h2>
+      <p>Unlock with the admin or scorekeeper passcode to log games.</p>
+      <button type="button" class="btn" id="unlock-log-game">Unlock</button>
     </section>
 
     <div id="empty-state" class="empty-state" style="display: none">
@@ -34,7 +34,7 @@
       <a class="player-link" href="players.html">add some on the Players page</a>.
     </div>
 
-    <div id="log-game-form" class="admin-only-section">
+    <div id="log-game-form" class="staff-only-section">
       <div class="toggle-group" id="format-toggle">
         <button type="button" class="active" data-format="Singles">Singles</button>
         <button type="button" data-format="Doubles">Doubles</button>
@@ -111,6 +111,10 @@
     <a href="live-game.html">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Live
+    </a>
+    <a href="brackets.html">
+      <svg viewBox="0 0 24 24"><path d="M2 4h5v4H2M2 16h5v4H2M7 6h3v12H7M10 12h6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="12" r="2.5"/></svg>
+      Brackets
     </a>
     <a href="history.html">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>

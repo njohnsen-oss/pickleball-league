@@ -22,17 +22,18 @@
   <div class="league-banner" id="league-banner"></div>
   <header class="top-bar"><h1>Live Game</h1><button id="settings-btn" class="settings-link" title="Change data source">⚙</button></header>
   <main>
-    <section class="admin-required-card locked-only">
+    <section class="admin-required-card staff-locked-only">
       <div class="admin-required-icon">🔒</div>
-      <h2>Admin Mode required</h2>
-      <p>Unlock this browser to score games live and save them to the league.</p>
-      <button type="button" class="btn" id="unlock-live">Unlock Admin Mode</button>
+      <h2>Scorekeeper or Admin</h2>
+      <p>Unlock with the admin or scorekeeper passcode to score games live and save them to the league.</p>
+      <button type="button" class="btn" id="unlock-live">Unlock</button>
       <p class="live-watch-link"><a href="live-view.html">Just watching? Open the live scoreboard →</a></p>
     </section>
 
-    <div class="admin-only-section">
+    <div class="staff-only-section">
       <!-- 1. Setup -->
       <section id="live-setup" style="display:none">
+        <div class="live-bk-banner" id="live-bk-banner" hidden></div>
         <a class="live-mm-link" href="matchmaking.html"><b>Matchmaking</b><span>Balanced games for who's here →</span></a>
         <div class="toggle-group" id="live-format">
           <button type="button" data-format="Singles">Singles</button>
@@ -176,6 +177,7 @@
           <button type="button" class="quick-action" id="live-new-game"><span>＋</span>New game</button>
         </div>
         <p class="live-watch-link" id="live-back-mm" hidden><a href="matchmaking.html">← Back to Matchmaking</a></p>
+        <p class="live-watch-link" id="live-back-bk" hidden><a href="brackets.html" id="live-back-bk-link">← Back to the bracket</a></p>
       </section>
     </div>
 
@@ -229,6 +231,10 @@
       <svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9.5 2.5h5M12 2.5V5" stroke-linecap="round" stroke-linejoin="round"/></svg>
       Live
     </a>
+    <a href="brackets.html">
+      <svg viewBox="0 0 24 24"><path d="M2 4h5v4H2M2 16h5v4H2M7 6h3v12H7M10 12h6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="12" r="2.5"/></svg>
+      Brackets
+    </a>
     <a href="history.html">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3" stroke-linecap="round" stroke-linejoin="round"/></svg>
       History
@@ -247,6 +253,8 @@
   <script src="js/team-colors.js"></script>
   <script src="js/live-render.js"></script>
   <script src="js/teams-model.js"></script>
+  <script src="js/bracket-engine.js"></script>
+  <script src="js/bracket-sync.js"></script>
   <script src="js/live-game.js"></script>
 </body>
 </html>

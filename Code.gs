@@ -4,12 +4,17 @@
  * two tabs: "Players" and "Games" with the header rows described below.
  * A third, optional "Rallies" tab is created automatically the first time a
  * live-scored game is saved. An optional "Teams" tab (set teams) is created
- * the first time a team is made on the Teams page.
+ * the first time a team is made on the Teams page, and a "Brackets" tab with
+ * the first bracket.
  *
  * Players: PlayerId | Name | Elo | GamesPlayed | Wins | Losses | Archived
  * Games:   GameId | Date | Format | SideA_Player1 | SideA_Player2 | SideB_Player1 | SideB_Player2 | ScoreA | ScoreB | Winner | EloDeltaA | EloDeltaB | EloDeltaA1 | EloDeltaA2 | EloDeltaB1 | EloDeltaB2
  * Rallies: GameId | Seq | ElapsedSec | ServingSide | Server | ServerNumber | Result | ScoreA | ScoreB
  * Teams:   TeamId | Player1 | Player2 | Name | Color | CreatedAt | Archived
+ * Brackets: BracketId | Name | Status | Version | UpdatedAt | Data (the bracket as JSON)
+ *
+ * Passcodes (Project Settings > Script Properties): ADMIN_PASSCODE (required, does
+ * everything) and SCORER_PASSCODE (optional; can only record games and bracket results).
  *
  * Deploy: Deploy > New deployment > Web app > Execute as: Me > Who has access: Anyone.
  * To ship changes later: Manage deployments > edit existing deployment > Version: New version > Deploy.
@@ -153,14 +158,31 @@ function setupSheet() {
 // is a public static site with no account system. Set it once via Apps Script:
 // Project Settings > Script Properties > add ADMIN_PASSCODE. Never hardcode
 // the passcode itself in this file.
-function checkPasscode(passcode) {
-  var expected = PropertiesService.getScriptProperties().getProperty('ADMIN_PASSCODE');
-  if (!expected) {
+// Two passcodes, both set by hand in Script Properties:
+//   ADMIN_PASSCODE    everything (history, players, teams, brackets, settings)
+//   SCORER_PASSCODE   optional; can only record results: log a game, live
+//                     score (and send it to the TV), and add bracket results.
+// passcodeRole() says which one was given; checkPasscode() is the admin gate
+// and checkScorer() lets either through. The "admin only" refusal doesn't
+// say "passcode", so the app doesn't sign a scorekeeper out over it.
+function passcodeRole(passcode) {
+  var props = PropertiesService.getScriptProperties();
+  var admin = props.getProperty('ADMIN_PASSCODE');
+  if (!admin) {
     throw new Error('Admin passcode not configured on the server (Script Properties > ADMIN_PASSCODE)');
   }
-  if (passcode !== expected) {
-    throw new Error('Incorrect passcode');
-  }
+  if (passcode === admin) return 'admin';
+  var scorer = props.getProperty('SCORER_PASSCODE');
+  if (scorer && passcode === scorer) return 'scorer';
+  throw new Error('Incorrect passcode');
+}
+
+function checkPasscode(passcode) {
+  if (passcodeRole(passcode) !== 'admin') throw new Error('Only the league admin can do that.');
+}
+
+function checkScorer(passcode) {
+  return passcodeRole(passcode);
 }
 
 function checkPasscodeIfConfigured(passcode) {
@@ -248,6 +270,10 @@ function doGet(e) {
       result = getLive(e.parameter.since);
     } else if (action === 'getTeams') {
       result = getTeams();
+    } else if (action === 'getBrackets') {
+      result = getBrackets();
+    } else if (action === 'getBracket') {
+      result = getBracket(e.parameter.id);
     } else {
       return jsonOutput({ error: 'Unknown action: ' + action });
     }
@@ -264,7 +290,7 @@ function doPost(e) {
   try { fastBody = JSON.parse(e.postData.contents); } catch (parseErr) { fastBody = null; }
   if (fastBody && fastBody.action === 'pushLive') {
     try {
-      checkPasscode(fastBody.passcode);
+      checkScorer(fastBody.passcode);
       return jsonOutput(pushLive(fastBody.live));
     } catch (err) {
       return jsonOutput({ error: err.message });
@@ -277,11 +303,19 @@ function doPost(e) {
     var action = body.action;
     var result;
     if (action === 'verifyAdmin') {
-      checkPasscode(body.passcode);
-      result = { ok: true };
+      result = { ok: true, role: passcodeRole(body.passcode) };
     } else if (action === 'setDuprAnchor') {
       checkPasscode(body.passcode);
       result = setDuprAnchor(body.player, body.rating);
+    } else if (action === 'createBracket') {
+      checkPasscode(body.passcode);
+      result = createBracket(body.bracket);
+    } else if (action === 'updateBracket') {
+      var bracketRole = checkScorer(body.passcode);
+      result = updateBracket(body.id, body.version, body.bracket, bracketRole);
+    } else if (action === 'removeBracket') {
+      checkPasscode(body.passcode);
+      result = removeBracket(body.id);
     } else if (action === 'addTeam') {
       checkPasscode(body.passcode);
       result = addTeam(body.player1, body.player2, body.name, body.color);
@@ -301,7 +335,7 @@ function doPost(e) {
       checkPasscode(body.passcode);
       result = unarchivePlayer(body.playerId);
     } else if (action === 'logGame') {
-      checkPasscode(body.passcode);
+      checkScorer(body.passcode);
       var requestId = String(body.requestId || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 80);
       var requestCache = CacheService.getScriptCache();
       var requestKey = requestId ? 'logGame:' + requestId : '';
@@ -593,6 +627,141 @@ function removeTeam(teamId) {
   var t = findTeam(teamsSheetToObjects(), teamId);
   sheet.getRange(t._rowIndex, 7).setValue(true); // Archived
   return { TeamId: String(t.TeamId), Archived: true };
+}
+
+// ---- Brackets ----
+// A bracket (single elimination or round robin) is one row in the Brackets
+// tab: a few columns to list it by, plus the whole bracket as JSON in Data.
+// The rules live in js/bracket-engine.js; the backend only stores it, checks
+// the admin passcode and refuses a save made from an out-of-date copy
+// (Version), so two phones can't overwrite each other's results. The tab is
+// created with the first bracket; removing one only marks its Status.
+var BRACKETS_HEADERS = ['BracketId', 'Name', 'Status', 'Version', 'UpdatedAt', 'Data'];
+var BRACKET_DATA_MAX = 45000; // a Sheet cell holds 50,000 characters
+
+function bracketsSheetToObjects() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Brackets');
+  if (!sheet) return [];
+  var values = sheet.getDataRange().getValues();
+  if (!values.length) return [];
+  checkHeaders('Brackets', values[0], BRACKETS_HEADERS);
+  var rows = [];
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    if (!row[0]) continue;
+    var obj = {};
+    for (var c = 0; c < BRACKETS_HEADERS.length; c++) obj[BRACKETS_HEADERS[c]] = row[c];
+    obj._rowIndex = i + 1;
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function bracketTime(v) {
+  return v instanceof Date ? v.toISOString() : String(v || '');
+}
+
+function parseBracketData(raw) {
+  try { return JSON.parse(String(raw || '')); } catch (err) { return null; }
+}
+
+function getBrackets() {
+  var list = bracketsSheetToObjects().filter(function (r) { return r.Status !== 'removed'; }).map(function (r) {
+    var data = parseBracketData(r.Data) || {};
+    return {
+      id: String(r.BracketId), name: String(r.Name), status: String(r.Status), version: Number(r.Version) || 1,
+      updatedAt: bracketTime(r.UpdatedAt), format: data.format || '', entrants: (data.entrants || []).length,
+      createdAt: data.createdAt || '', counts: data.counts !== false
+    };
+  });
+  list.sort(function (a, b) { return a.updatedAt < b.updatedAt ? 1 : -1; });
+  return { brackets: list };
+}
+
+function findBracketRow(rows, id) {
+  var r = rows.filter(function (x) { return String(x.BracketId) === String(id) && x.Status !== 'removed'; })[0];
+  if (!r) throw new Error('Bracket not found: ' + id);
+  return r;
+}
+
+function getBracket(id) {
+  var r = findBracketRow(bracketsSheetToObjects(), id);
+  var data = parseBracketData(r.Data);
+  if (!data) throw new Error('This bracket’s saved data can’t be read');
+  return { id: String(r.BracketId), version: Number(r.Version) || 1, updatedAt: bracketTime(r.UpdatedAt), bracket: data };
+}
+
+function cleanBracketData(data) {
+  if (!data || typeof data !== 'object') throw new Error('Missing bracket');
+  if (data.format !== 'single' && data.format !== 'roundrobin') throw new Error('Unknown bracket format');
+  if (!Array.isArray(data.entrants) || data.entrants.length < 2) throw new Error('A bracket needs at least 2 teams');
+  if (!Array.isArray(data.matches) || !data.matches.length) throw new Error('This bracket has no matches');
+  var name = String(data.name || '').trim().replace(/\s+/g, ' ');
+  if (!name) throw new Error('Give the bracket a name');
+  if (name.length > 40) throw new Error('Keep the bracket name to 40 characters or fewer');
+  if (/^[=+\-@]/.test(name)) throw new Error('A bracket name can’t start with = + - or @');
+  data.name = name;
+  data.status = data.status === 'done' ? 'done' : 'active';
+  var json = JSON.stringify(data);
+  if (json.length > BRACKET_DATA_MAX) throw new Error('This bracket is too big to save');
+  return { data: data, json: json };
+}
+
+function createBracket(data) {
+  var clean = cleanBracketData(data);
+  var rows = bracketsSheetToObjects();
+  var maxNum = 0;
+  rows.forEach(function (r) {
+    var n = parseInt(String(r.BracketId).replace('b', ''), 10);
+    if (!isNaN(n) && n > maxNum) maxNum = n;
+  });
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ensureSheetHeaders(ss, 'Brackets', BRACKETS_HEADERS); // creates the tab with the first bracket
+  var sheet = ss.getSheetByName('Brackets');
+  var id = 'b' + (maxNum + 1);
+  var now = new Date();
+  sheet.getRange(sheet.getLastRow() + 1, 1, 1, BRACKETS_HEADERS.length).setValues([[id, clean.data.name, clean.data.status, 1, now, clean.json]]);
+  return { id: id, version: 1, updatedAt: now.toISOString(), bracket: clean.data };
+}
+
+function updateBracket(id, version, data, role) {
+  var sheet = getSheet('Brackets');
+  var r = findBracketRow(bracketsSheetToObjects(), id);
+  if (Number(r.Version) !== Number(version)) {
+    throw new Error('This bracket changed on another phone. Reload it and try again.');
+  }
+  var clean = cleanBracketData(data);
+  if (role === 'scorer') assertOnlyAddsResults(parseBracketData(r.Data), clean.data);
+  var next = (Number(r.Version) || 1) + 1;
+  var now = new Date();
+  sheet.getRange(r._rowIndex, 2, 1, 5).setValues([[clean.data.name, clean.data.status, next, now, clean.json]]);
+  return { id: String(r.BracketId), version: next, updatedAt: now.toISOString(), bracket: clean.data };
+}
+
+// A scorekeeper's save may only add games (and move winners on): no edits
+// to the bracket's settings, teams or earlier results, and no undo.
+function assertOnlyAddsResults(before, after) {
+  var refuse = function () { throw new Error('Only the league admin can change or undo bracket results.'); };
+  if (!before) refuse();
+  ['name', 'format', 'target', 'bestOf', 'finalBestOf', 'counts', 'entrants'].forEach(function (k) {
+    if (JSON.stringify(before[k]) !== JSON.stringify(after[k])) refuse();
+  });
+  if (before.matches.length !== after.matches.length) refuse();
+  before.matches.forEach(function (m, i) {
+    var n = after.matches[i];
+    if (!n || n.id !== m.id || n.games.length < m.games.length) refuse();
+    if ((m.a && n.a !== m.a) || (m.b && n.b !== m.b) || (m.winner && n.winner !== m.winner)) refuse();
+    m.games.forEach(function (g, j) {
+      if (n.games[j].a !== g.a || n.games[j].b !== g.b || String(n.games[j].gameId || '') !== String(g.gameId || '')) refuse();
+    });
+  });
+}
+
+function removeBracket(id) {
+  var sheet = getSheet('Brackets');
+  var r = findBracketRow(bracketsSheetToObjects(), id);
+  sheet.getRange(r._rowIndex, 3).setValue('removed');
+  return { id: String(r.BracketId), removed: true };
 }
 
 // ---- Games ----
