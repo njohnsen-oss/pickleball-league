@@ -60,6 +60,10 @@
     <!-- Two views over the same data: the wide table on desktop, an expandable
          card per player on mobile. CSS picks one; #leaderboard-views gates both. -->
     <div id="leaderboard-views" hidden>
+      <div class="toggle-group rating-view-toggle" id="rating-view" role="group" aria-label="Rank by">
+        <button type="button" class="active" data-view="league">League rating</button>
+        <button type="button" data-view="dupr">DUPR est.</button>
+      </div>
       <div id="leaderboard-podium"></div>
       <table id="leaderboard-table">
         <thead>
@@ -67,6 +71,7 @@
             <th>#</th>
             <th>Player</th>
             <th>Rating</th>
+            <th class="numeric-column" title="DUPR-style estimate from league games">DUPR est.</th>
             <th>Record</th>
             <th class="numeric-column">Win %</th>
             <th>Confidence</th>
@@ -80,6 +85,21 @@
       </table>
       <div id="leaderboard-cards" class="player-card-list"></div>
     </div>
+    <details class="how-ratings" id="how-ratings">
+      <summary>How ratings work</summary>
+      <div class="how-ratings-body">
+        <h3>League rating</h3>
+        <p>Every game in the league's history is used at once to find the set of ratings that best explains who beat whom. In doubles, a team's strength is the average of its two players. Bigger wins count a little more than close ones. Everyone starts at 1000; the number has no ceiling.</p>
+        <p>New players show <b>P</b> (provisional) until they have 8 games and enough variety of partners and opponents for the rating to settle. The confidence bar shows how settled it is.</p>
+        <h3>DUPR est.</h3>
+        <p>An estimate on the scale USA Pickleball uses (DUPR, 2.0 to 8.0), worked out from league games only. Before each game it predicts the score from the two teams' average ratings: a half-point gap expects about 11&ndash;5. Your rating moves on points scored versus that prediction, so a close loss to a stronger team can raise it and a narrow win over a weaker team can lower it. Recent games count a bit more, and players with only a few games stay near the middle until they've played more.</p>
+        <p class="how-ratings-note" id="dupr-anchor-text"></p>
+        <p class="how-ratings-note">This is not an official DUPR. Official ratings come from matches recorded with DUPR.</p>
+        <h3>Fixing a bad result</h3>
+        <p>Edit or delete the game on History, then use Settings &rarr; Recalculate ratings. Both numbers are rebuilt from the full game history, so nothing is lost.</p>
+      </div>
+    </details>
+
     <section id="calibration-section" class="calibration-section" style="display:none">
       <div class="section-heading-row">
         <div>
@@ -121,6 +141,7 @@
   <script src="js/api.js"></script>
   <script src="js/admin.js"></script>
   <script src="js/csv.js"></script>
+  <script src="js/dupr-style.js"></script>
   <script src="js/leaderboard.js"></script>
 </body>
 </html>
