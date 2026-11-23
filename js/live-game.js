@@ -172,6 +172,7 @@ function renderColorChips() {
 let colorSheetSide = null;
 let colorSheetCloseTimer = null;
 let colorSheetBefore = null; // both colors as they were when the sheet opened
+let colorSheetQueue = [];     // a lineup that arrives whole (Matchmaking) asks A, then B
 
 function renderColorSheet() {
   const side = colorSheetSide;
@@ -218,7 +219,10 @@ function closeColorSheet(save) {
   colorSheetBefore = null;
   colorSheetSide = null;
   $('live-color-sheet').classList.remove('open');
-  colorSheetCloseTimer = setTimeout(() => { $('live-color-sheet').hidden = true; }, 200);
+  colorSheetCloseTimer = setTimeout(() => {
+    $('live-color-sheet').hidden = true;
+    if (colorSheetQueue.length && !game) openColorSheet(colorSheetQueue.shift());
+  }, 220);
 }
 
 let colorMsgTimer = null;
@@ -314,6 +318,7 @@ function startGame() {
       firstServingSide: draft.firstServingSide,
       target: draft.target,
       colors: typeof normalizeTeamColors === 'function' ? normalizeTeamColors(draft.colors) : undefined,
+      from: draft.from || undefined,
       startedAt: Date.now(),
       oddsA: roster.length ? oddsForA(sideA, sideB) : null,
     },
@@ -489,6 +494,7 @@ function renderFinal(state) {
   $('live-save').style.display = saved ? 'none' : 'block';
   $('live-final-undo').style.display = saved ? 'none' : 'inline-flex';
   $('live-after-save').style.display = saved ? 'grid' : 'none';
+  $('live-back-mm').hidden = !(saved && setup.from === 'mm');
   if (saved) {
     const fmt = (d) => `<span class="${d >= 0 ? 'delta-pos' : 'delta-neg'}">${d >= 0 ? '+' : ''}${d}</span>`;
     showStatus('live-save-status', 'success', `Saved as ${escapeHtml(game.saved.gameId)}. Immediate model impact: Side A ${fmt(game.saved.deltaA)}, Side B ${fmt(game.saved.deltaB)}.`, true);
@@ -558,6 +564,7 @@ function backToSetup(keepLineup, swapSides) {
     if (setup.colors) draft.colors = swapSides ? { A: setup.colors.B, B: setup.colors.A } : { ...setup.colors };
   } else if (!keepLineup) {
     draft.slots = { a1: '', a2: '', b1: '', b2: '' };
+    draft.from = '';
   }
   game = null;
   storeGame();
@@ -827,7 +834,36 @@ document.addEventListener('visibilitychange', () => {
   if (broadcast.status === 'error' || broadcast.status === 'idle') broadcastGame(); // catch the TV up after the phone slept
 });
 
+/* Matchmaking opens this page with the lineup in the link
+   (?from=mm&format=Doubles&target=11&a=..&a2=..&b=..&b2=..). The link is
+   cleared straight away so a reload doesn't re-apply it. */
+function readLivePrefill() {
+  const p = new URLSearchParams(window.location.search);
+  const a = p.get('a');
+  const b = p.get('b');
+  if (!a || !b) return null;
+  const format = p.get('format') === 'Singles' ? 'Singles' : 'Doubles';
+  const pre = { format, a1: a, a2: p.get('a2') || '', b1: b, b2: p.get('b2') || '', target: Number(p.get('target')), from: p.get('from') || '' };
+  history.replaceState(null, '', window.location.pathname);
+  if (format === 'Doubles' && (!pre.a2 || !pre.b2)) return null;
+  return pre;
+}
+
+const livePrefill = readLivePrefill();
 game = loadStoredGame();
+if (livePrefill && !game) {
+  draft.format = livePrefill.format;
+  draft.slots = { a1: livePrefill.a1, a2: livePrefill.a2, b1: livePrefill.b1, b2: livePrefill.b2 };
+  if ([11, 15, 21].includes(livePrefill.target)) draft.target = livePrefill.target;
+  draft.from = livePrefill.from;
+}
 render();
+if (livePrefill && !game) {
+  // Both teams arrived filled: ask for Side A's color, then Side B's.
+  colorSheetQueue = ['B'];
+  openColorSheet('A');
+} else if (livePrefill && game) {
+  setTimeout(() => showToast('Finish or discard this game first, then start the Matchmaking game', null), 400);
+}
 loadRoster();
 if (game) broadcastGame(); // a resumed game: bring the TV up to date

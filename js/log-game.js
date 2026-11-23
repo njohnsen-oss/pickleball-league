@@ -8,7 +8,11 @@ function readPrefill() {
   const format = params.get('format');
   const a = params.get('a');
   const b = params.get('b');
+  const a2 = params.get('a2');
+  const b2 = params.get('b2');
   if (format === 'Singles' && a && b) pendingPrefill = { format, a, b };
+  // Doubles from Matchmaking: a + a2 vs b + b2.
+  if (format === 'Doubles' && a && a2 && b && b2) pendingPrefill = { format, a, a2, b, b2 };
 }
 
 function setFormat(format) {
@@ -163,8 +167,10 @@ async function loadPlayers() {
 
     refreshPickers();
     if (pendingPrefill) {
-      setFormat('Singles');
-      assignPickerValues({ a1: pendingPrefill.a, b1: pendingPrefill.b });
+      setFormat(pendingPrefill.format);
+      assignPickerValues(pendingPrefill.format === 'Doubles'
+        ? { a1: pendingPrefill.a, a2: pendingPrefill.a2, b1: pendingPrefill.b, b2: pendingPrefill.b2 }
+        : { a1: pendingPrefill.a, b1: pendingPrefill.b });
       pendingPrefill = null;
     }
   });
