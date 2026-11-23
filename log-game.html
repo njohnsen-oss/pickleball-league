@@ -40,11 +40,6 @@
         <button type="button" data-format="Doubles">Doubles</button>
       </div>
 
-      <div id="balance-panel" class="balance-panel" style="display:none">
-        <button type="button" class="btn secondary" id="balance-btn">⚖️ Balance These 4 Players</button>
-        <div id="balance-result" class="balance-result" style="display:none"></div>
-      </div>
-
       <div class="team-slots" id="team-slots">
         <div class="team-slot">
           <span class="team-slot-label">Side A</span>
@@ -55,6 +50,11 @@
           <span class="team-slot-label">Side B</span>
           <div class="slot-names" id="slot-names-b"></div>
         </div>
+      </div>
+
+      <div class="live-team-picks" id="team-picks" hidden>
+        <div class="live-option-label" id="team-picks-label">Set teams</div>
+        <div class="live-team-pick-row" id="team-pick-row" role="group" aria-labelledby="team-picks-label"></div>
       </div>
 
       <div class="picker-heading">
@@ -93,7 +93,6 @@
         <div class="post-game-actions">
           <button type="button" class="quick-action" id="rematch-btn"><span>↻</span>Rematch</button>
           <button type="button" class="quick-action" id="swap-sides-btn"><span>⇄</span>Swap sides</button>
-          <button type="button" class="quick-action" id="rebalance-btn"><span>⚖</span>Rebalance</button>
           <button type="button" class="quick-action danger-action" id="undo-game-btn"><span>↶</span>Undo</button>
         </div>
       </section>
@@ -126,6 +125,8 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/admin.js"></script>
+  <script src="js/team-colors.js"></script>
+  <script src="js/teams-model.js"></script>
   <script src="js/log-game.js"></script>
 </body>
 </html>
