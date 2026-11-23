@@ -151,7 +151,7 @@ function updatePill() {
   $('tv-pill-text').textContent = screen === 'live' ? 'LIVE' : screen === 'final' ? 'FINAL' : 'STANDBY';
   const live = snapshot && snapshot.live;
   $('tv-meta').textContent = live && screen !== 'waiting'
-    ? `${live.setup.format} · Game to ${live.setup.target || LIVE_DEFAULT_TARGET}`
+    ? (live.setup.bracket && live.setup.bracket.label ? `${live.setup.bracket.label} · ` : '') + `${live.setup.format} · Game to ${live.setup.target || LIVE_DEFAULT_TARGET}`
     : '';
 }
 
@@ -308,7 +308,7 @@ function renderFinal(live, state) {
   ];
   $('tv-final-stats').innerHTML = tiles.map(([k, v]) => `<div class="tv-stat"><span>${escapeHtml(k)}</span><b>${escapeHtml(v)}</b></div>`).join('');
   $('tv-final-foot').textContent = live.saved
-    ? `Saved to the league as ${live.saved.gameId} ✓`
+    ? (live.saved.bracketOnly ? 'Saved to the bracket ✓' : `Saved to the league as ${live.saved.gameId} ✓`)
     : `${sideNames(setup, l)} · ${state.scores[l]}   ·   Waiting for the scorer to save it to the league`;
   $('tv-foot-right').textContent = '';
 
@@ -324,6 +324,80 @@ function playNeonSign(fin) {
   fin.classList.add('play');
 }
 
+// ---------- a bracket on standby ----------
+// Between games the TV shows the bracket that's in progress (or one that
+// finished in the last 3 hours, with its champion), refreshed every 30 s
+// and right after each game.
+const TV_BRACKET_REFRESH_MS = 30000;
+const TV_BRACKET_RECENT_MS = 3 * 60 * 60 * 1000;
+let tvBracket = null;
+let tvBracketAt = 0;
+
+async function refreshTvBracket() {
+  if (typeof upNext !== 'function') return;
+  tvBracketAt = Date.now();
+  try {
+    const list = ((await apiGet('getBrackets')) || {}).brackets || [];
+    const recent = (x) => Date.now() - Date.parse(x.updatedAt) < TV_BRACKET_RECENT_MS;
+    const pick = list.find((x) => x.status === 'active') || list.find((x) => x.status === 'done' && recent(x));
+    tvBracket = pick ? await apiGet('getBracket', { id: pick.id }) : null;
+  } catch (err) {
+    tvBracket = null; // an older backend or offline: plain standby
+  }
+  if (screen === 'waiting') renderTvBracket();
+}
+
+function tvBracketMatchHtml(br, m) {
+  const label = (e) => entrantLabel(e, firstName);
+  const row = (side) => {
+    const e = m[side] ? bracketEntrant(br, m[side]) : null;
+    const cls = ['tv-bk-r'];
+    if (m.winner === side) cls.push('win');
+    else if (m.winner) cls.push('lose');
+    if (!e) cls.push('tbd');
+    const score = !m.games.length ? '' : m.bestOf > 1 ? seriesScore(m)[side] : m.games[m.games.length - 1][side];
+    const dot = e && e.color ? `<i style="--c:${escapeHtml(e.color)}"></i>` : '<i></i>';
+    return `<div class="${cls.join(' ')}">${dot}<span>${escapeHtml(e ? label(e) : (m.bye ? 'Bye' : 'TBD'))}</span><b>${score}</b></div>`;
+  };
+  return `<div class="tv-bk-m${matchReady(m) ? ' ready' : ''}">${row('a')}${row('b')}</div>`;
+}
+
+function renderTvBracket() {
+  const host = $('tv-bk');
+  const br = tvBracket && tvBracket.bracket;
+  $('tv-waiting').classList.toggle('with-bracket', Boolean(br));
+  host.hidden = !br;
+  if (!br) return;
+  const label = (e) => entrantLabel(e, firstName);
+  const champ = champion(br);
+  const next = upNext(br);
+  const line = champ
+    ? `Champion: ${label(champ)}`
+    : next.length ? `Up next: ${label(bracketEntrant(br, next[0].a))} vs ${label(bracketEntrant(br, next[0].b))}` : '';
+  let body;
+  if (br.format === 'roundrobin') {
+    const table = roundRobinStandings(br);
+    body = '<div class="tv-bk-rr"><table class="tv-bk-table"><thead><tr><th>#</th><th>Team</th><th>W-L</th><th>+/−</th></tr></thead><tbody>'
+      + table.map((r, i) => { const e = bracketEntrant(br, r.id); return `<tr><td>${i + 1}</td><td><i style="--c:${escapeHtml(e.color || 'transparent')}"></i>${escapeHtml(label(e))}</td><td>${r.wins}-${r.losses}</td><td>${r.diff > 0 ? '+' : r.diff < 0 ? '−' : ''}${Math.abs(r.diff)}</td></tr>`; }).join('')
+      + '</tbody></table>'
+      + `<div class="tv-bk-col"><span>${next.length ? 'Up next' : 'All matches played'}</span><div class="tv-bk-list">${next.slice(0, 6).map((m) => tvBracketMatchHtml(br, m)).join('')}</div></div></div>`;
+  } else {
+    const rounds = Math.max(...br.matches.map((m) => m.round));
+    const rows = br.matches.filter((m) => m.round === 1).length;
+    let cols = '';
+    for (let r = 1; r <= rounds; r += 1) {
+      cols += `<div class="tv-bk-col"><span>${escapeHtml(bracketRoundName(br, r))}</span><div class="tv-bk-col-matches">${br.matches.filter((m) => m.round === r).map((m) => tvBracketMatchHtml(br, m)).join('')}</div></div>`;
+    }
+    body = `<div class="tv-bk-tree" style="--rows:${rows}">${cols}</div>`;
+  }
+  host.innerHTML = `<div class="tv-bk-head"><b>${escapeHtml(br.name)}</b><span>${escapeHtml(line)}</span></div>${body}`;
+}
+
+setInterval(() => {
+  if (screen === 'waiting' && document.visibilityState === 'visible') refreshTvBracket();
+}, TV_BRACKET_REFRESH_MS);
+refreshTvBracket();
+
 function renderWaiting(live, state) {
   $('tv-waiting-title').textContent = lastError && !lastOkAt ? 'Can’t reach the league yet' : 'No game on right now';
   let sub = 'This screen switches on by itself when the next game starts.';
@@ -335,6 +409,8 @@ function renderWaiting(live, state) {
   $('tv-waiting-sub').textContent = sub;
   $('tv-foot-right').textContent = '';
   shown = null;
+  renderTvBracket();
+  if (Date.now() - tvBracketAt > 5000) refreshTvBracket(); // pick up the result just saved
 }
 
 function updateClock() {

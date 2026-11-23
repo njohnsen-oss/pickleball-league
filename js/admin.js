@@ -2,11 +2,31 @@
 // validates the passcode again for every write. Hiding controls is UX;
 // server-side validation is the actual protection.
 
+//
+// Two levels: the admin passcode unlocks everything; the scorekeeper
+// passcode (optional, Script Properties > SCORER_PASSCODE) only records
+// results: Log Game, Live, and bracket scores. The page marks them with
+//   .admin-only / .admin-only-section     admin
+//   .staff-only / .staff-only-section     admin or scorekeeper
+//   .locked-only / .staff-locked-only     shown until unlocked (as admin / as either)
+
 const ADMIN_PASSCODE_STORAGE_KEY = 'pickleballAdminPasscode';
+const ADMIN_ROLE_STORAGE_KEY = 'pickleballAdminRole';
 const ADMIN_MODE_EVENT = 'adminmodechange';
 
+// 'admin', 'scorer' or ''. A browser unlocked before scorekeepers existed
+// has no role saved; it was unlocked with the admin code.
+function unlockedRole() {
+  if (!localStorage.getItem(ADMIN_PASSCODE_STORAGE_KEY)) return '';
+  return localStorage.getItem(ADMIN_ROLE_STORAGE_KEY) === 'scorer' ? 'scorer' : 'admin';
+}
+
 function isAdminUnlocked() {
-  return Boolean(localStorage.getItem(ADMIN_PASSCODE_STORAGE_KEY));
+  return unlockedRole() === 'admin';
+}
+
+function isStaffUnlocked() {
+  return unlockedRole() !== '';
 }
 
 function ensurePasscodeModal() {
@@ -19,9 +39,9 @@ function ensurePasscodeModal() {
   overlay.innerHTML = `
     <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="passcode-modal-title">
       <div class="modal-kicker">League management</div>
-      <h2 id="passcode-modal-title">Unlock Admin Mode</h2>
-      <p class="field-help">Enter the league passcode once. This browser will stay unlocked until you lock it again.</p>
-      <label for="passcode-modal-input">Admin passcode</label>
+      <h2 id="passcode-modal-title">Unlock</h2>
+      <p class="field-help">Enter the admin passcode, or the scorekeeper passcode to record games. This browser stays unlocked until you lock it again.</p>
+      <label for="passcode-modal-input">Passcode</label>
       <input type="password" id="passcode-modal-input" autocomplete="current-password" />
       <div id="passcode-modal-status" class="status" style="display:none"></div>
       <div class="modal-actions">
@@ -57,7 +77,7 @@ function promptForPasscode() {
       const value = input.value.trim();
       if (!value) {
         statusEl.className = 'status error';
-        statusEl.textContent = 'Enter the admin passcode.';
+        statusEl.textContent = 'Enter a passcode.';
         statusEl.style.display = 'block';
         return;
       }
@@ -75,39 +95,47 @@ function promptForPasscode() {
   });
 }
 
+// Returns the role the passcode unlocks ('admin' or 'scorer').
 async function verifyAdminPasscode(passcode) {
-  await apiPost('verifyAdmin', { passcode });
-  return passcode;
+  const res = await apiPost('verifyAdmin', { passcode });
+  return res && res.role === 'scorer' ? 'scorer' : 'admin';
+}
+
+function rememberPasscode(passcode, role) {
+  localStorage.setItem(ADMIN_PASSCODE_STORAGE_KEY, passcode);
+  localStorage.setItem(ADMIN_ROLE_STORAGE_KEY, role);
 }
 
 function applyAdminMode() {
-  const unlocked = isAdminUnlocked();
+  const role = unlockedRole();
+  const unlocked = role === 'admin';
   document.body.classList.toggle('admin-unlocked', unlocked);
+  document.body.classList.toggle('staff-unlocked', role !== '');
+  document.body.classList.toggle('scorer-unlocked', role === 'scorer');
 
   const toggle = document.getElementById('admin-mode-toggle');
   if (toggle) {
-    toggle.classList.toggle('unlocked', unlocked);
-    toggle.title = unlocked ? 'Lock Admin Mode' : 'Unlock Admin Mode';
+    const label = role === 'scorer' ? 'Scorer' : 'Admin';
+    toggle.classList.toggle('unlocked', role !== '');
+    toggle.title = role ? `Lock (${label})` : 'Unlock';
     toggle.setAttribute('aria-label', toggle.title);
-    toggle.innerHTML = unlocked
-      ? '<span class="admin-lock-icon">🔓</span><span class="admin-lock-label">Admin</span>'
-      : '<span class="admin-lock-icon">🔒</span><span class="admin-lock-label">Admin</span>';
+    toggle.innerHTML = `<span class="admin-lock-icon">${role ? '🔓' : '🔒'}</span><span class="admin-lock-label">${label}</span>`;
   }
 
-  window.dispatchEvent(new CustomEvent(ADMIN_MODE_EVENT, { detail: { unlocked } }));
+  window.dispatchEvent(new CustomEvent(ADMIN_MODE_EVENT, { detail: { unlocked, role } }));
 }
 
 async function unlockAdminMode() {
   const passcode = await promptForPasscode();
   if (!passcode) return '';
   try {
-    await verifyAdminPasscode(passcode);
-    localStorage.setItem(ADMIN_PASSCODE_STORAGE_KEY, passcode);
+    const role = await verifyAdminPasscode(passcode);
+    rememberPasscode(passcode, role);
     applyAdminMode();
     return passcode;
   } catch (err) {
     clearStoredPasscode();
-    window.alert('Could not unlock Admin Mode: ' + err.message);
+    window.alert('Could not unlock: ' + err.message);
     return '';
   }
 }
@@ -120,6 +148,7 @@ async function getOrPromptPasscode() {
 
 function clearStoredPasscode() {
   localStorage.removeItem(ADMIN_PASSCODE_STORAGE_KEY);
+  localStorage.removeItem(ADMIN_ROLE_STORAGE_KEY);
   applyAdminMode();
 }
 
@@ -142,7 +171,7 @@ function buildAdminChrome() {
   toggle.id = 'admin-mode-toggle';
   toggle.className = 'admin-mode-toggle';
   toggle.addEventListener('click', async () => {
-    if (isAdminUnlocked()) clearStoredPasscode();
+    if (isStaffUnlocked()) clearStoredPasscode();
     else await unlockAdminMode();
   });
   actions.appendChild(toggle);

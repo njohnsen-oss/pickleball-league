@@ -148,6 +148,7 @@ function renderSetup() {
   }
 
   $('live-start').disabled = !full;
+  renderBracketBanner();
   renderTeamPicks();
   renderColorChips();
 }
@@ -429,6 +430,60 @@ async function loadRoster() {
   }
 }
 
+// ---------- bracket games (Brackets page) ----------
+// A game opened from a bracket match carries { id, match } here; once the
+// bracket loads it also knows the match's label and whether it counts toward
+// ratings. On save the result goes to the bracket (and to the league unless
+// the bracket has ratings off).
+
+async function loadBracketLink() {
+  const link = draft.bracket;
+  if (!link) return;
+  try {
+    const data = await apiGet('getBracket', { id: link.id });
+    if (draft.bracket !== link) return;
+    const br = data.bracket;
+    const m = bracketMatch(br, link.match);
+    const name = `${br.name} · ${bracketRoundName(br, m.round)}`;
+    const gameNo = m.games.length + 1;
+    const teams = [m.a, m.b].map((id) => { const e = bracketEntrant(br, id); return e ? e.players.slice() : []; });
+    draft.bracket = { id: link.id, match: link.match, counts: br.counts !== false, label: m.bestOf > 1 ? `${name} · Game ${gameNo}` : name, ready: matchReady(m), teams };
+  } catch (err) {
+    draft.bracket = { ...link, loading: false, error: err.message };
+  }
+  if (!game) renderSetup();
+}
+
+function renderBracketBanner() {
+  const el = $('live-bk-banner');
+  if (!el) return;
+  const link = draft.bracket;
+  el.hidden = !link;
+  if (!link) return;
+  let text;
+  if (link.loading) text = 'Loading the bracket…';
+  else if (link.error) text = `Couldn’t load the bracket: ${escapeHtml(link.error)}`;
+  else if (!link.ready) text = `${escapeHtml(link.label)} · this match is already decided or still waiting, so this game won’t go to the bracket`;
+  else if (lineupMatchesBracket(link) === false && sideFull('A') && sideFull('B')) text = `${escapeHtml(link.label)} · the lineup isn’t this match’s two teams, so this game won’t go to the bracket`;
+  else text = `<b>${escapeHtml(link.label)}</b><span>${link.counts ? 'Counts toward ratings' : 'Ratings off: saves to the bracket only'}</span>`;
+  el.innerHTML = `<span class="live-bk-text">${text}</span><button type="button" class="live-bk-off" id="live-bk-off" aria-label="Not a bracket game">×</button>`;
+}
+
+// The lineup on court must be the bracket match's two teams (either side).
+function lineupMatchesBracket(link) {
+  if (!link || !link.teams || draft.format !== 'Doubles') return false;
+  const key = (ps) => ps.filter(Boolean).slice().sort().join('|');
+  const { sideA, sideB } = draftSides();
+  const want = link.teams.map(key).sort().join('/');
+  return [key(sideA), key(sideB)].sort().join('/') === want;
+}
+
+function bracketForGame() {
+  const link = draft.bracket;
+  if (!link || link.loading || link.error || !link.ready || !lineupMatchesBracket(link)) return undefined;
+  return { id: link.id, match: link.match, counts: link.counts, label: link.label };
+}
+
 // Rides inside the game (setup.teams) so the TV can show team names.
 function setTeamsForGame(sideA, sideB) {
   if (draft.format !== 'Doubles') return undefined;
@@ -450,6 +505,7 @@ function startGame() {
       target: draft.target,
       colors: typeof normalizeTeamColors === 'function' ? normalizeTeamColors(draft.colors) : undefined,
       teams: setTeamsForGame(sideA, sideB),
+      bracket: bracketForGame(),
       from: draft.from || undefined,
       startedAt: Date.now(),
       oddsA: roster.length ? oddsForA(sideA, sideB) : null,
@@ -627,9 +683,22 @@ function renderFinal(state) {
   $('live-final-undo').style.display = saved ? 'none' : 'inline-flex';
   $('live-after-save').style.display = saved ? 'grid' : 'none';
   $('live-back-mm').hidden = !(saved && setup.from === 'mm');
+  $('live-back-bk').hidden = !(saved && setup.bracket);
+  if (saved && setup.bracket) {
+    $('live-back-bk-link').href = 'brackets.html?id=' + encodeURIComponent(setup.bracket.id);
+    $('live-back-bk-link').textContent = game.saved.bracket && !game.saved.bracket.decided ? '← Back to the bracket (next game in this match)' : '← Back to the bracket';
+  }
   if (saved) {
     const fmt = (d) => `<span class="${d >= 0 ? 'delta-pos' : 'delta-neg'}">${d >= 0 ? '+' : ''}${d}</span>`;
-    showStatus('live-save-status', 'success', `Saved as ${escapeHtml(game.saved.gameId)}. Immediate model impact: Side A ${fmt(game.saved.deltaA)}, Side B ${fmt(game.saved.deltaB)}.`, true);
+    let msg = game.saved.bracketOnly
+      ? 'Saved to the bracket. Ratings are off for this bracket, so the league doesn’t count it.'
+      : `Saved as ${escapeHtml(game.saved.gameId)}. Immediate model impact: Side A ${fmt(game.saved.deltaA)}, Side B ${fmt(game.saved.deltaB)}.`;
+    if (setup.bracket && game.saved.bracket && !game.saved.bracketOnly) msg += ' Bracket updated.';
+    if (game.saved.bracketError) {
+      showStatus('live-save-status', 'error', `${msg} But the bracket didn’t update: ${escapeHtml(game.saved.bracketError)} <button type="button" class="small" id="live-bk-retry">Try again</button>`, true);
+    } else {
+      showStatus('live-save-status', 'success', msg, true);
+    }
   }
   if (celebratedGame !== game.requestId) {
     celebratedGame = game.requestId;
@@ -647,7 +716,13 @@ async function saveGame() {
   const btn = $('live-save');
   btn.disabled = true;
   showStatus('live-save-status', '', 'Saving…');
+  const bk = game.setup.bracket;
   try {
+    if (bk && !bk.counts) {
+      game.saved = { gameId: '', bracketOnly: true };
+      await saveToBracket(passcode, state);
+      return;
+    }
     const result = await apiPost('logGame', {
       passcode,
       requestId: game.requestId,
@@ -668,17 +743,45 @@ async function saveGame() {
       })),
     });
     game.saved = { gameId: result.game.GameId, deltaA: result.game.EloDeltaA, deltaB: result.game.EloDeltaB };
-    storeGame();
-    broadcastGame();
-    invalidateAllCache();
-    releaseWakeLock();
-    render();
+    if (bk) await saveToBracket(passcode, state);
+    else finishSave();
   } catch (err) {
     if (/passcode/i.test(err.message)) clearStoredPasscode();
-    showStatus('live-save-status', 'error', 'Not saved: ' + err.message + ' Your game is still here, so you can try again.');
+    if (game.saved && !game.saved.bracketOnly) finishSave(); // the league has it; only the bracket step failed
+    else { game.saved = null; showStatus('live-save-status', 'error', 'Not saved: ' + err.message + ' Your game is still here, so you can try again.'); }
   } finally {
     btn.disabled = false;
   }
+}
+
+function finishSave() {
+  storeGame();
+  broadcastGame();
+  invalidateAllCache();
+  releaseWakeLock();
+  render();
+}
+
+// The bracket step: a failure here keeps the league save and offers a retry.
+async function saveToBracket(passcode, state) {
+  const bk = game.setup.bracket;
+  try {
+    const res = await recordBracketGame({ id: bk.id, matchId: bk.match, passcode, sideAPlayers: game.setup.sideA, scoreA: state.scores.A, scoreB: state.scores.B, gameId: game.saved.gameId, requestId: game.requestId });
+    game.saved.bracket = { decided: Boolean(res.result && res.result.match && res.result.match.winner), done: res.bracket.status === 'done' };
+    delete game.saved.bracketError;
+  } catch (err) {
+    if (game.saved.bracketOnly) throw err; // nothing saved anywhere yet
+    game.saved.bracketError = err.message;
+  }
+  finishSave();
+}
+
+async function retryBracketSave() {
+  if (!game || !game.saved || !game.setup.bracket) return;
+  const passcode = await getOrPromptPasscode();
+  if (!passcode) return;
+  showStatus('live-save-status', '', 'Saving to the bracket…');
+  await saveToBracket(passcode, replayLiveGame(game.setup, game.events));
 }
 
 function backToSetup(keepLineup, swapSides) {
@@ -686,6 +789,11 @@ function backToSetup(keepLineup, swapSides) {
   // back to standby by itself; anything left unsaved (unfinished or a
   // finished game that's discarded) is cleared from the TV right away.
   const keepOnTv = Boolean(game && game.saved);
+  const prevBracket = game && game.setup.bracket;
+  const matchGoesOn = prevBracket && game.saved && game.saved.bracket && !game.saved.bracket.decided;
+  draft.bracket = keepLineup && !swapSides && prevBracket && (matchGoesOn || !game.saved)
+    ? { id: prevBracket.id, match: prevBracket.match, loading: true } : null;
+  if (draft.bracket) setTimeout(loadBracketLink, 0);
   if (game && keepLineup) {
     const { setup } = game;
     const a = swapSides ? setup.sideB : setup.sideA;
@@ -733,7 +841,7 @@ function liveSnapshot() {
     requestId: game.requestId,
     setup: game.setup,
     events: game.events,
-    saved: game.saved ? { gameId: game.saved.gameId } : null,
+    saved: game.saved ? { gameId: game.saved.gameId, bracketOnly: Boolean(game.saved.bracketOnly) } : null,
   };
 }
 
@@ -800,7 +908,7 @@ function renderBroadcastStatus() {
     if (refused) {
       alert.textContent = /not configured/i.test(broadcast.error)
         ? 'TV link refused: this league has no admin passcode set yet. Scoring still works.'
-        : 'TV link refused: the admin passcode on this phone doesn’t match this league. Scoring still works; unlock Admin again with the right one.';
+        : 'TV link refused: the passcode on this phone doesn’t match this league. Scoring still works; lock and unlock again with the right one.';
     }
   }
   document.querySelectorAll('.live-sync-dot').forEach((dot) => { dot.className = 'live-sync-dot ' + label.cls; });
@@ -908,6 +1016,13 @@ $('live-first-server').addEventListener('click', (e) => {
   renderSetup();
 });
 
+$('live-bk-banner').addEventListener('click', (e) => {
+  if (e.target.closest('#live-bk-off')) { draft.bracket = null; renderSetup(); }
+});
+$('live-save-status').addEventListener('click', (e) => {
+  if (e.target.closest('#live-bk-retry')) retryBracketSave();
+});
+
 $('live-team-pick-row').addEventListener('click', (e) => {
   const btn = e.target.closest('.team-pick');
   if (btn && !btn.disabled) toggleTeam(btn.dataset.team);
@@ -995,6 +1110,7 @@ function readLivePrefill() {
   if (!a || !b) return null;
   const format = p.get('format') === 'Singles' ? 'Singles' : 'Doubles';
   const pre = { format, a1: a, a2: p.get('a2') || '', b1: b, b2: p.get('b2') || '', target: Number(p.get('target')), from: p.get('from') || '' };
+  if (pre.from === 'bracket' && p.get('bracket') && p.get('match')) pre.bracket = { id: p.get('bracket'), match: p.get('match') };
   history.replaceState(null, '', window.location.pathname);
   if (format === 'Doubles' && (!pre.a2 || !pre.b2)) return null;
   return pre;
@@ -1007,9 +1123,11 @@ if (livePrefill && !game) {
   draft.slots = { a1: livePrefill.a1, a2: livePrefill.a2, b1: livePrefill.b1, b2: livePrefill.b2 };
   if ([11, 15, 21].includes(livePrefill.target)) draft.target = livePrefill.target;
   draft.from = livePrefill.from;
+  draft.bracket = livePrefill.bracket ? { ...livePrefill.bracket, loading: true } : null;
 }
 render();
 loadSetTeams();
+if (draft.bracket && !game) loadBracketLink();
 if (livePrefill && !game) {
   // Both teams arrived filled: ask for Side A's color, then Side B's.
   colorSheetQueue = ['B'];

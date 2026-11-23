@@ -66,9 +66,10 @@ function getReturnTo() {
 
 function refreshPasscodeStatus() {
   const statusEl = document.getElementById('passcode-status');
-  statusEl.textContent = localStorage.getItem(ADMIN_PASSCODE_STORAGE_KEY)
-    ? 'Currently remembered in this browser.'
-    : 'Not set in this browser.';
+  const role = unlockedRole();
+  statusEl.textContent = role === 'scorer'
+    ? 'Scorekeeper passcode remembered in this browser (records games only).'
+    : role ? 'Admin passcode remembered in this browser.' : 'Not set in this browser.';
 }
 
 window.addEventListener(ADMIN_MODE_EVENT, refreshPasscodeStatus);
@@ -218,8 +219,8 @@ function initSettingsPage() {
     const statusEl = document.getElementById('passcode-status');
     statusEl.textContent = 'Checking passcode…';
     try {
-      await verifyAdminPasscode(value);
-      localStorage.setItem(ADMIN_PASSCODE_STORAGE_KEY, value);
+      const role = await verifyAdminPasscode(value);
+      rememberPasscode(value, role);
       document.getElementById('passcode-input').value = '';
       applyAdminMode();
       refreshPasscodeStatus();
