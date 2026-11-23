@@ -769,3 +769,82 @@ body.matchmaking-page header.top-bar h1 { font-size: clamp(1.4rem, 6.4vw, 2.1rem
 /* Keep "39-28 · 58% won" on one line whatever number sits on the right; the form dots give way first. */
 .pc-line { white-space: nowrap; overflow: hidden; }
 .pc-line .pc-form { flex-shrink: 1; min-width: 0; overflow: hidden; }
+
+/* =====================================================================
+   TV game over: neon "WINNERS" sign in the winning team's color, then the
+   winners' circles (photos later), then the score. Plays once per game
+   (.play is set by live-view.js); stats and the save line come in last.
+   ===================================================================== */
+.tv-final {
+  --tc-ink: var(--team-a-ink); --tc-glow: var(--team-a-glow);
+  --tl: var(--tv-b); --tl-ink: var(--team-b-ink);
+  --lit: #FFFFFF;
+  --neon-glow: 0 0 0.05em rgba(255, 255, 255, 0.55), 0 0 0.14em var(--tc), 0 0 0.33em var(--tc), 0 0 0.66em var(--tc);
+  --ring-glow: 0 0 1vmin var(--tc), 0 0 2.6vmin var(--tc), 0 0 4.6vmin var(--tc-glow);
+  --tube-glow: 0 0 0.12em var(--tc), 0 0 0.36em var(--tc), inset 0 0 0.16em var(--tc-glow);
+  gap: calc(var(--pad) * 0.42);
+}
+.tv-final.side-b { --tc-ink: var(--team-b-ink); --tc-glow: var(--team-b-glow); --tl: var(--tv-a); --tl-ink: var(--team-a-ink); }
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  .tv-final { --lit: color-mix(in srgb, var(--tc) 30%, #FFFFFF); }
+}
+.tv-neon { font-family: var(--font-display); font-weight: 600; font-size: clamp(44px, 10.5vmin, 150px); line-height: 1.08; letter-spacing: 0.06em; }
+.tv-neon-box { padding: 0.02em 0.42em 0.08em; border: max(3px, 0.035em) solid var(--lit); border-radius: 0.2em; box-shadow: var(--tube-glow); }
+.tv-neon-l { display: inline-block; color: var(--lit); text-shadow: var(--neon-glow); }
+.tv-final-avs { display: flex; justify-content: center; gap: clamp(22px, 5vmin, 72px); }
+.tv-fav { display: flex; flex-direction: column; align-items: center; gap: clamp(6px, 1.2vmin, 16px); }
+.tv-fav-ring { width: clamp(64px, 12.5vmin, 176px); height: clamp(64px, 12.5vmin, 176px); box-sizing: border-box; overflow: hidden; display: grid; place-items: center; border-radius: 50%; border: max(3px, 0.4vmin) solid var(--lit); background: var(--tc); color: var(--tc-ink); box-shadow: var(--ring-glow); font-family: var(--font-display); font-weight: 600; font-size: clamp(22px, 4.4vmin, 62px); }
+.tv-fav-ring img { width: 100%; height: 100%; object-fit: cover; }
+.tv-fav b { font-family: var(--font-display); font-weight: 500; font-size: clamp(16px, 3.1vmin, 44px); line-height: 1; letter-spacing: 0.06em; text-transform: uppercase; }
+.tv-final .tv-final-score { font-size: clamp(56px, 13vmin, 190px); line-height: 1; text-shadow: 0 0 0.18em var(--tc-glow); }
+.tv-final-over { display: flex; align-items: center; gap: 0.6em; color: var(--mist); font-size: clamp(13px, 2.3vmin, 30px); font-weight: 600; }
+.tv-over-avs { display: flex; }
+.tv-over-avs i { width: 1.9em; height: 1.9em; margin-right: -0.32em; box-sizing: border-box; display: grid; place-items: center; border-radius: 50%; border: 2px solid var(--night); background: var(--tl); color: var(--tl-ink); font-family: var(--font-display); font-style: normal; font-weight: 600; font-size: 0.8em; }
+.tv-final-after { display: flex; flex-direction: column; align-items: center; gap: calc(var(--pad) * 0.4); width: 100%; }
+
+.tv-final.play .tv-neon { animation: tv-neon-hum 2.8s ease-in-out 5.4s infinite; }
+.tv-final.play .tv-neon-box { animation: tv-neon-tube 0.9s steps(1) 2.5s both; }
+.tv-final.play .tv-neon-l { animation: tv-neon-flick 1.3s linear both; }
+.tv-final.play .tv-neon-l:nth-child(1) { animation-delay: 0.25s; }
+.tv-final.play .tv-neon-l:nth-child(2) { animation-delay: 0.55s; }
+.tv-final.play .tv-neon-l:nth-child(3) { animation-delay: 0.85s; }
+.tv-final.play .tv-neon-l:nth-child(4) { animation-delay: 1.15s; }
+.tv-final.play .tv-neon-l:nth-child(5) { animation: tv-neon-flick 1.3s linear 1.45s both, tv-neon-stutter 6s steps(1) 7s infinite; }
+.tv-final.play .tv-neon-l:nth-child(6) { animation-delay: 1.75s; }
+.tv-final.play .tv-neon-l:nth-child(7) { animation-delay: 2.05s; }
+.tv-final.play .tv-fav { animation: tv-fav-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) var(--dl, 2.9s) both; }
+.tv-final.play .tv-fav-ring { animation: tv-ring-on 0.8s steps(1) calc(var(--dl, 2.9s) + 0.3s) both, tv-neon-hum 2.8s ease-in-out 5.4s infinite; }
+.tv-final.play .tv-final-score { animation: tv-final-pop 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) 3.9s both; }
+.tv-final.play .tv-final-over { animation: tv-final-rise 1s ease 4.6s both; }
+.tv-final.play .tv-final-after { animation: tv-final-rise 1s ease 5.2s both; }
+
+@keyframes tv-neon-flick {
+  0% { color: rgba(246, 241, 231, 0.08); text-shadow: none; }
+  8% { color: var(--lit); text-shadow: var(--neon-glow); }
+  12% { color: rgba(246, 241, 231, 0.08); text-shadow: none; }
+  26% { color: var(--lit); text-shadow: var(--neon-glow); }
+  30% { color: rgba(246, 241, 231, 0.15); text-shadow: none; }
+  44%, 100% { color: var(--lit); text-shadow: var(--neon-glow); }
+}
+@keyframes tv-neon-tube {
+  0% { border-color: rgba(246, 241, 231, 0.08); box-shadow: none; }
+  20% { border-color: var(--lit); box-shadow: var(--tube-glow); }
+  35% { border-color: rgba(246, 241, 231, 0.1); box-shadow: none; }
+  55%, 100% { border-color: var(--lit); box-shadow: var(--tube-glow); }
+}
+@keyframes tv-ring-on {
+  0% { border-color: rgba(246, 241, 231, 0.12); box-shadow: none; }
+  20% { border-color: var(--lit); box-shadow: var(--ring-glow); }
+  35% { border-color: rgba(246, 241, 231, 0.15); box-shadow: none; }
+  55%, 100% { border-color: var(--lit); box-shadow: var(--ring-glow); }
+}
+@keyframes tv-neon-hum { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.2); } }
+@keyframes tv-neon-stutter { 0%, 93%, 100% { opacity: 1; } 94% { opacity: 0.35; } 96% { opacity: 1; } 97% { opacity: 0.5; } 98% { opacity: 1; } }
+@keyframes tv-fav-in { 0% { opacity: 0; transform: scale(0.7); } 60% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes tv-final-pop { 0% { opacity: 0; transform: scale(0.88); filter: blur(6px); } 100% { opacity: 1; transform: none; filter: none; } }
+@keyframes tv-final-rise { from { opacity: 0; transform: translateY(0.8em); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-final.play .tv-neon, .tv-final.play .tv-neon-box, .tv-final.play .tv-neon-l, .tv-final.play .tv-fav, .tv-final.play .tv-fav-ring,
+  .tv-final.play .tv-final-score, .tv-final.play .tv-final-over, .tv-final.play .tv-final-after { animation: none; }
+}
