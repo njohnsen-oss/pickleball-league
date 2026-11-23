@@ -61,9 +61,12 @@
          card per player on mobile. CSS picks one; #leaderboard-views gates both. -->
     <div id="leaderboard-views" hidden>
       <div class="toggle-group rating-view-toggle" id="rating-view" role="group" aria-label="Rank by">
-        <button type="button" class="active" data-view="league">League rating</button>
+        <button type="button" class="active" data-view="league">Rating</button>
         <button type="button" data-view="dupr">DUPR est.</button>
+        <button type="button" data-view="winpct">Win %</button>
+        <button type="button" data-view="pointdiff">+/−</button>
       </div>
+      <p class="rating-view-help" id="rating-view-help"></p>
       <div id="leaderboard-podium"></div>
       <table id="leaderboard-table">
         <thead>
@@ -74,6 +77,7 @@
             <th class="numeric-column" title="DUPR-style estimate from league games">DUPR est.</th>
             <th>Record</th>
             <th class="numeric-column">Win %</th>
+            <th class="numeric-column" title="Average point margin per game">+/−</th>
             <th>Confidence</th>
             <th class="numeric-column">Games</th>
             <th>Singles Record</th>
@@ -88,15 +92,22 @@
     <details class="how-ratings" id="how-ratings">
       <summary>How ratings work</summary>
       <div class="how-ratings-body">
-        <h3>League rating</h3>
-        <p>Every game in the league's history is used at once to find the set of ratings that best explains who beat whom. In doubles, a team's strength is the average of its two players. Bigger wins count a little more than close ones. Everyone starts at 1000; the number has no ceiling.</p>
+        <p>The switch above ranks by one of four numbers. The table on a computer shows all of them.</p>
+        <h3>Rating</h3>
+        <p>The league rating. Every game in the league's history is used at once to find the set of ratings that best explains who beat whom. Bigger wins count a little more than close ones. Everyone starts at 1000; the number has no ceiling.</p>
         <p>New players show <b>P</b> (provisional) until they have 8 games and enough variety of partners and opponents for the rating to settle. The confidence bar shows how settled it is.</p>
         <h3>DUPR est.</h3>
         <p>An estimate on the scale USA Pickleball uses (DUPR, 2.0 to 8.0), worked out from league games only. Before each game it predicts the score from the two teams' average ratings: a half-point gap expects about 11&ndash;5. Your rating moves on points scored versus that prediction, so a close loss to a stronger team can raise it and a narrow win over a weaker team can lower it. Recent games count a bit more, and players with only a few games stay near the middle until they've played more.</p>
         <p class="how-ratings-note" id="dupr-anchor-text"></p>
-        <p class="how-ratings-note">This is not an official DUPR. Official ratings come from matches recorded with DUPR.</p>
+        <p class="how-ratings-note">This is not an official DUPR. Official ratings come from matches recorded with DUPR. If a league player has a real DUPR, an admin can enter it in Settings and every estimate lines up to it.</p>
+        <h3>Win %</h3>
+        <p>Games won out of games played. Easy to read, but it doesn't care who you played or who your partner was.</p>
+        <h3>+/− (point differential)</h3>
+        <p>Your team's points minus the other team's, averaged per game. A close loss barely hurts and a blowout counts for a lot.</p>
+        <h3>Doubles</h3>
+        <p>In every method a doubles team counts as the average of its two players, and both partners get the team's result and point margin.</p>
         <h3>Fixing a bad result</h3>
-        <p>Edit or delete the game on History, then use Settings &rarr; Recalculate ratings. Both numbers are rebuilt from the full game history, so nothing is lost.</p>
+        <p>Edit or delete the game on History, then use Settings &rarr; Recalculate ratings. Every number here is rebuilt from the full game history, so nothing is lost.</p>
       </div>
     </details>
 
@@ -142,6 +153,7 @@
   <script src="js/admin.js"></script>
   <script src="js/csv.js"></script>
   <script src="js/dupr-style.js"></script>
+  <script src="js/rankings.js"></script>
   <script src="js/leaderboard.js"></script>
 </body>
 </html>

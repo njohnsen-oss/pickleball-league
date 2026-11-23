@@ -173,7 +173,39 @@ function checkPasscodeIfConfigured(passcode) {
 // A missing property (nothing set yet) returns an empty name; the frontend
 // falls back to a hardcoded default in that case.
 function getLeagueName() {
-  return { name: PropertiesService.getScriptProperties().getProperty('LEAGUE_NAME') || '' };
+  var props = PropertiesService.getScriptProperties();
+  return { name: props.getProperty('LEAGUE_NAME') || '', duprAnchor: readDuprAnchor(props) };
+}
+
+// The DUPR estimate on the Leaderboard lines up to one player's real DUPR
+// (js/dupr-style.js). Stored as a Script Property next to the league name so
+// every phone sees the same anchor. Shape: {"player":"Noah Johnsen","rating":3.75}.
+function readDuprAnchor(props) {
+  var raw = (props || PropertiesService.getScriptProperties()).getProperty('DUPR_ANCHOR');
+  if (!raw) return null;
+  try {
+    var a = JSON.parse(raw);
+    return a && a.player && isFinite(a.rating) ? { player: String(a.player), rating: Number(a.rating) } : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+// An empty player clears the anchor (back to the placeholder scale).
+function setDuprAnchor(player, rating) {
+  var props = PropertiesService.getScriptProperties();
+  var name = String(player || '').trim();
+  if (!name) {
+    props.deleteProperty('DUPR_ANCHOR');
+    return { duprAnchor: null };
+  }
+  var value = Number(rating);
+  if (!isFinite(value) || value < 2 || value > 8) throw new Error('A DUPR rating is between 2.000 and 8.000');
+  var known = playersSheetToObjects().some(function (p) { return p.Name === name; });
+  if (!known) throw new Error('Player not found: ' + name);
+  var anchor = { player: name, rating: Math.round(value * 1000) / 1000 };
+  props.setProperty('DUPR_ANCHOR', JSON.stringify(anchor));
+  return { duprAnchor: anchor };
 }
 
 // Gated like editGame/deleteGame: unlike adding a player, this is a single
@@ -243,6 +275,9 @@ function doPost(e) {
     if (action === 'verifyAdmin') {
       checkPasscode(body.passcode);
       result = { ok: true };
+    } else if (action === 'setDuprAnchor') {
+      checkPasscode(body.passcode);
+      result = setDuprAnchor(body.player, body.rating);
     } else if (action === 'addPlayer') {
       checkPasscode(body.passcode);
       result = addPlayer(body.name);

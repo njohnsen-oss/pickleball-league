@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v19-matchmaking-1';
+const STATIC_CACHE = 'pickleball-static-v20-rankings-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -28,6 +28,7 @@ const STATIC_ASSETS = [
   './js/players.js',
   './js/player.js',
   './js/dupr-style.js',
+  './js/rankings.js',
   './js/matchup.js',
   './js/settings.js',
   './js/matchmaker.js',

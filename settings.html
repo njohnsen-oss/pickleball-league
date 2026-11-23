@@ -76,6 +76,22 @@
     <input type="text" id="league-name-input" placeholder="e.g. FreightWise Pickleball League" />
     <div id="league-name-status" class="status" style="display: none"></div>
     <button type="button" class="btn" id="save-league-name-btn">Save</button>
+
+    <h2>DUPR estimate</h2>
+    <p class="field-help">
+      If someone in the league has a real DUPR, pick them and enter it here.
+      Every DUPR est. on the Leaderboard then lines up to that rating, for
+      everyone. Requires the admin passcode above.
+    </p>
+    <label for="dupr-anchor-player">Player with a real DUPR</label>
+    <select id="dupr-anchor-player"><option value="">Nobody yet (league average shows as 3.50)</option></select>
+    <label for="dupr-anchor-rating">Their DUPR</label>
+    <input type="number" id="dupr-anchor-rating" min="2" max="8" step="0.001" inputmode="decimal" placeholder="e.g. 3.750" />
+    <div id="dupr-anchor-status" class="status" style="display: none"></div>
+    <div class="button-row">
+      <button type="button" class="btn" id="save-dupr-anchor-btn">Save</button>
+      <button type="button" class="btn secondary" id="clear-dupr-anchor-btn">Clear</button>
+    </div>
   </main>
 
   <nav class="tab-bar">
