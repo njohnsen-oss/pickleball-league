@@ -550,9 +550,10 @@ async function saveGame() {
 }
 
 function backToSetup(keepLineup, swapSides) {
-  // A finished game stays up on the TV until the next one starts; a game
-  // that's discarded or re-lined-up before it finished is cleared from it.
-  const finished = Boolean(game && replayLiveGame(game.setup, game.events).over);
+  // A saved game stays up on the TV for its winner screen, then the TV goes
+  // back to standby by itself; anything left unsaved (unfinished or a
+  // finished game that's discarded) is cleared from the TV right away.
+  const keepOnTv = Boolean(game && game.saved);
   if (game && keepLineup) {
     const { setup } = game;
     const a = swapSides ? setup.sideB : setup.sideA;
@@ -571,7 +572,7 @@ function backToSetup(keepLineup, swapSides) {
   releaseWakeLock();
   render();
   loadRoster();
-  if (!finished) broadcastGame();
+  if (!keepOnTv) broadcastGame();
 }
 
 // ---------- TV / spectator broadcast ----------

@@ -17,7 +17,8 @@
 const VIEW_POLL_LIVE_MS = 300; // gap between polls if the backend can't long-poll
 const VIEW_POLL_IDLE_MS = 1500;
 const VIEW_TIMEOUT_MS = 12000;
-const VIEW_FINAL_HOLD_MS = 30 * 60 * 1000; // a finished game stays up this long
+const VIEW_FINAL_HOLD_MS = 30 * 60 * 1000; // a finished, unsaved game stays up this long
+const VIEW_SAVED_HOLD_MS = 15 * 1000; // once it's saved, the winner screen stays up this long, then standby
 const VIEW_FEED_SIZE = 7;
 
 const $ = (id) => document.getElementById(id);
@@ -43,6 +44,10 @@ window.liveViewStats = { roundTrips: [], applied: [], renderMs: [] };
 
 function withTimeout(promise, ms) {
   return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('The league data took too long to answer.')), ms))]);
+}
+
+function finalHoldMs(live) {
+  return live && live.saved ? VIEW_SAVED_HOLD_MS : VIEW_FINAL_HOLD_MS;
 }
 
 function gameKey(live) {
@@ -93,7 +98,7 @@ function apply(data) {
   const live = data.live && data.live.setup && Array.isArray(data.live.events) ? data.live : null;
   snapshot = { live, updatedAt: data.updatedAt ? Date.parse(data.updatedAt) : 0, version: data.version || '' };
   const key = gameKey(live);
-  const finalExpired = screen === 'final' && snapshot.updatedAt && Date.now() - snapshot.updatedAt > VIEW_FINAL_HOLD_MS;
+  const finalExpired = screen === 'final' && snapshot.updatedAt && Date.now() - snapshot.updatedAt > finalHoldMs(snapshot.live);
   if (key === lastKey && !finalExpired) return;
   lastKey = key;
   lastChangeAt = Date.now();
@@ -125,7 +130,7 @@ function render() {
       setScreen('live');
       renderLive(live, state);
       if (fromIdle && isNewGame) playStartTransition();
-    } else if (!snapshot.updatedAt || Date.now() - snapshot.updatedAt < VIEW_FINAL_HOLD_MS) {
+    } else if (!snapshot.updatedAt || Date.now() - snapshot.updatedAt < finalHoldMs(live)) {
       setScreen('final');
       renderFinal(live, state);
     } else {
@@ -266,8 +271,18 @@ function renderFinal(live, state) {
   const fin = $('tv-final');
   fin.classList.toggle('side-a', w === 'A');
   fin.classList.toggle('side-b', w === 'B');
-  $('tv-final-names').textContent = `${sideNames(setup, w)} win`;
+  $('tv-final-names').textContent = `${sideNames(setup, w)} win ${state.scores[w]} to ${state.scores[l]}`;
   $('tv-final-score').textContent = `${state.scores[w]} – ${state.scores[l]}`;
+  // The winners' circles (photos later) and the losers' line are built once
+  // per game, so a later re-render (e.g. when it's saved) doesn't replay them.
+  if (celebrated !== live.requestId) {
+    celebrated = live.requestId;
+    const winners = w === 'A' ? setup.sideA : setup.sideB;
+    const losers = w === 'A' ? setup.sideB : setup.sideA;
+    $('tv-final-avs').innerHTML = winners.map((n, i) => `<div class="tv-fav" style="--dl:${(2.9 + i * 0.35).toFixed(2)}s"><span class="tv-fav-ring">${escapeHtml(initials(n))}</span><b>${escapeHtml(firstName(n))}</b></div>`).join('');
+    $('tv-final-over').innerHTML = `<span class="tv-over-avs" aria-hidden="true">${losers.map((n) => `<i>${escapeHtml(initials(n))}</i>`).join('')}</span><span>over ${escapeHtml(sideNames(setup, l))}</span>`;
+    playNeonSign(fin);
+  }
 
   let badge = '';
   if (typeof setup.oddsA === 'number') {
@@ -293,11 +308,15 @@ function renderFinal(live, state) {
   $('tv-foot-right').textContent = '';
 
   shown = { requestId: live.requestId, events: live.events.length };
-  if (celebrated !== live.requestId) {
-    celebrated = live.requestId;
-    const palette = typeof teamConfettiPalette === 'function' ? teamConfettiPalette(setup.colors, w) : null;
-    requestAnimationFrame(() => fireConfetti($('tv-confetti'), 180, palette));
-  }
+}
+
+// Winning animation: the "WINNERS" neon sign flickers on letter by letter in
+// the winning team's color, then the winners' circles light up, then the
+// score. Restarting the class replays it for each new game's final.
+function playNeonSign(fin) {
+  fin.classList.remove('play');
+  void fin.offsetWidth;
+  fin.classList.add('play');
 }
 
 function renderWaiting(live, state) {
