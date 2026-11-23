@@ -3,6 +3,13 @@ let currentGames = [];
 let currentGamesLoaded = false;
 let currentCalibration = null;
 
+/* Which number the podium and cards rank by: the league rating (the Elo-scale
+   model in Code.gs) or the DUPR-style estimate (js/dupr-style.js). The
+   desktop table always shows both. Remembered per browser. */
+const RATING_VIEW_KEY = 'pickleballRatingView';
+let ratingView = (() => { try { return localStorage.getItem(RATING_VIEW_KEY) === 'dupr' ? 'dupr' : 'league'; } catch (e) { return 'league'; } })();
+let currentDupr = null;
+
 function splitRecordForPlayer(player, format) {
   if (currentGamesLoaded) {
     const normalizedFormat = format.toLowerCase();
@@ -144,8 +151,17 @@ function renderCalibration() {
 /* One computed shape per player, so the table row and the mobile card stay in
    sync and the per-format record scan only runs once per player. */
 function playerView(p, rankedPosition) {
+  const dupr = currentDupr ? currentDupr.ratings[p.Name] : undefined;
+  const useDupr = ratingView === 'dupr' && Number.isFinite(dupr);
+  // Guarded: a phone can briefly run this against a cached index.html that
+  // doesn't load js/dupr-style.js yet.
+  const fmt = typeof formatDuprStyle === 'function' ? formatDuprStyle : () => '–';
   return {
     player: p,
+    dupr,
+    duprText: fmt(dupr),
+    metricText: useDupr ? fmt(dupr) : String(Math.round(p.Elo)),
+    metricLabel: useDupr ? 'DUPR' : 'rating',
     rank: p.IsProvisional ? 'P' : rankedPosition,
     isTop: !p.IsProvisional && rankedPosition === 1,
     elo: Math.round(p.Elo),
@@ -171,6 +187,7 @@ function leaderboardRow(v) {
       ${provisionalBadgeHtml(p)}
     </td>
     <td class="numeric-column"><strong>${v.elo}</strong></td>
+    <td class="numeric-column">${v.duprText}</td>
     <td class="record-column">${v.record}</td>
     <td class="numeric-column">${v.winPct}%</td>
     <td>${confidenceCellHtml(p)}</td>
@@ -205,8 +222,8 @@ function playerCardHtml(v, isOpen) {
         </span>
       </span>
       <span class="pc-rating">
-        <span class="pc-rating-value">${v.elo}</span>
-        <span class="pc-rating-label">rating</span>
+        <span class="pc-rating-value">${v.metricText}</span>
+        <span class="pc-rating-label">${v.metricLabel}</span>
       </span>
       <svg class="pc-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </summary>
@@ -253,7 +270,7 @@ function podiumHtml(views) {
       ${place === 1 ? '<span class="podium-crown">Champ</span>' : ''}
       <span class="podium-avatar" aria-hidden="true">${initialsFor(v.player.Name)}</span>
       <span class="podium-name">${shortNameFor(v.player.Name)}</span>
-      <span class="podium-rating">${v.elo}</span>
+      <span class="podium-rating">${v.metricText}</span>
       <span class="podium-meta">#${place} · ${v.record}</span>
     </a>`;
   return `<div class="podium" aria-label="Top three">${spot(top[1], 2)}${spot(top[0], 1)}${spot(top[2], 3)}</div>`;
@@ -281,8 +298,18 @@ async function loadLeaderboard() {
     );
     body.innerHTML = '';
     cards.innerHTML = '';
+    if (currentGamesLoaded && typeof duprStyleRatings === 'function') {
+      currentDupr = duprStyleRatings(currentLeaderboard, currentGames);
+      const anchorEl = document.getElementById('dupr-anchor-text');
+      if (anchorEl) anchorEl.textContent = currentDupr.anchorText;
+    }
+    // In DUPR view the list is ordered by the estimate; provisional players
+    // keep their "P" either way.
+    const ordered = ratingView === 'dupr' && currentDupr
+      ? currentLeaderboard.slice().sort((a, b) => (currentDupr.ratings[b.Name] || 0) - (currentDupr.ratings[a.Name] || 0))
+      : currentLeaderboard;
     let rankedPosition = 0;
-    const rows = currentLeaderboard.map((p) => {
+    const rows = ordered.map((p) => {
       if (!p.IsProvisional) rankedPosition += 1;
       return playerView(p, rankedPosition);
     });
@@ -303,6 +330,20 @@ async function loadLeaderboard() {
     loading.style.display = 'none';
     views.hidden = false;
     renderCalibration();
+  }
+
+  const viewToggle = document.getElementById('rating-view');
+  if (viewToggle) {
+    const paintToggle = () => viewToggle.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b.dataset.view === ratingView));
+    paintToggle();
+    viewToggle.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-view]');
+      if (!btn || btn.dataset.view === ratingView) return;
+      ratingView = btn.dataset.view;
+      try { localStorage.setItem(RATING_VIEW_KEY, ratingView); } catch (err) { /* private mode: just don't remember */ }
+      paintToggle();
+      render();
+    });
   }
 
   let renderedFromCache = false;
