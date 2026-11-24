@@ -1082,3 +1082,17 @@ body:not(.staff-unlocked) .staff-only,
 body:not(.staff-unlocked) .staff-only-section { display: none !important; }
 body.staff-unlocked .staff-locked-only { display: none !important; }
 body.staff-unlocked:not(.admin-unlocked) nav.tab-bar a.admin-nav-item { display: flex !important; }
+
+/* Teams: New team (any two players). */
+.team-new { width: 100%; margin: 0 0 12px; }
+.team-pick-players { margin: 4px 0 10px; }
+.team-pick-players[hidden] { display: none; }
+.team-pick-players .player-grid { margin-top: 6px; max-height: 42vh; overflow-y: auto; }
+.team-sheet #team-save:disabled { opacity: 0.45; }
+
+/* On a different data source than the live league (e.g. the TEST link). */
+.data-source-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; max-width: 640px; margin: 10px auto 0; padding: 10px 12px; border: 1px solid rgba(217, 224, 60, 0.45); border-radius: 12px; background: rgba(217, 224, 60, 0.08); color: var(--neon); font-size: 0.82rem; font-weight: 600; box-sizing: border-box; }
+.data-source-note button { flex: none; margin: 0; white-space: nowrap; }
+@media (max-width: 680px) { .data-source-note { margin-left: 20px; margin-right: 20px; } }
+.team-sheet .live-share-card { max-height: 92dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.team-pick-players .player-grid { max-height: 32dvh; }
