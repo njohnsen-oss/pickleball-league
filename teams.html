@@ -55,11 +55,12 @@
         <button type="button" data-view="pointdiff">+/−</button>
       </div>
       <p class="rating-view-help" id="team-view-help"></p>
+      <button type="button" class="btn secondary admin-only team-new" id="team-new">+ New team</button>
 
       <div class="player-card-list" id="team-cards"></div>
       <div class="team-empty" id="teams-empty" hidden>
         <h2>No set teams yet</h2>
-        <p class="admin-only">Pick a pair from Suggested teams below to make the first one.</p>
+        <p class="admin-only">Tap New team to pick any two players, or use a suggested pair below.</p>
         <p class="locked-only">Set teams are pairs who play together a lot. Unlock Admin to make one.</p>
       </div>
 
@@ -86,6 +87,10 @@
       <div class="live-share-grip" aria-hidden="true"></div>
       <h2 id="team-sheet-title">Make a team</h2>
       <p class="live-share-sub" id="team-sheet-sub"></p>
+      <div class="team-pick-players" id="team-pick-players" hidden>
+        <div class="live-option-label">Pick two players</div>
+        <div class="player-grid" id="team-player-grid"></div>
+      </div>
       <label for="team-name">Team name <span class="field-optional">(optional)</span></label>
       <input type="text" id="team-name" maxlength="30" autocomplete="off" />
       <div class="team-color-label" id="team-color-label">Team color</div>
