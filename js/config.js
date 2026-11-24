@@ -97,9 +97,26 @@ function renderLeagueBanner() {
   });
 }
 
+// A ?api= link (like the TEST link) is remembered on this phone. So it's
+// never a surprise, every page says so, with one tap back to the league.
+function renderDataSourceNotice() {
+  const banner = document.getElementById('league-banner');
+  if (!banner || !APPS_SCRIPT_URL || APPS_SCRIPT_URL === DEFAULT_API_URL) return;
+  const note = document.createElement('div');
+  note.className = 'data-source-note';
+  note.innerHTML = '<span>This phone is using a different data source, not the live league.</span>'
+    + '<button type="button" class="small" id="use-live-league">Use the live league</button>';
+  banner.insertAdjacentElement('afterend', note);
+  note.querySelector('#use-live-league').addEventListener('click', () => {
+    if (typeof invalidateAllCache === 'function') invalidateAllCache();
+    resetApiUrl();
+  });
+}
+
 function initChrome() {
   wireSettingsButton();
   renderLeagueBanner();
+  renderDataSourceNotice();
 }
 
 if (document.readyState === 'loading') {

@@ -155,15 +155,42 @@ function setTeamColor(hex) {
   renderTeamSwatches();
 }
 
+// "New team": any two active players. Pairs already on a team are refused.
+function renderTeamPlayerPicks() {
+  const picked = [teamSheet.p1, teamSheet.p2].filter(Boolean);
+  $t('team-player-grid').innerHTML = teamState.leaderboard.map((p) => {
+    const on = picked.includes(p.Name);
+    const full = picked.length === 2 && !on;
+    return `<button type="button" class="player-chip${on ? ' picked' : ''}${full ? ' is-disabled' : ''}" data-player="${escT(p.Name)}" aria-pressed="${on}"${full ? ' disabled' : ''}>`
+      + `<span class="chip-slot">${on ? picked.indexOf(p.Name) + 1 : ''}</span><span class="chip-name">${escT(p.Name)}</span><span class="chip-elo">${Math.round(Number(p.Elo) || 0)}</span></button>`;
+  }).join('');
+  const short = shortNamer(teamState.leaderboard.map((p) => p.Name));
+  let sub = 'Pick two players';
+  let blocked = picked.length < 2;
+  if (picked.length === 2) {
+    const games = (pairGames(teamState.games)[teamKey(picked[0], picked[1])] || []).length;
+    const existing = findSetTeam(teamState.teams, picked[0], picked[1]);
+    sub = `${picked[0]} & ${picked[1]} · ${games ? `${games} game${games === 1 ? '' : 's'} together` : 'no games together yet'}`;
+    if (existing) { sub = `${teamLabelFor(existing, short)} is already a team`; blocked = true; }
+    $t('team-name').placeholder = `${short(picked[0])} & ${short(picked[1])}`;
+  }
+  $t('team-sheet-sub').textContent = sub;
+  $t('team-save').disabled = blocked;
+}
+
 function openTeamSheet(sheetState) {
   teamSheet = sheetState;
   const short = shortNamer(teamState.leaderboard.map((p) => p.Name));
   const editing = sheetState.mode === 'edit';
+  const choosing = sheetState.mode === 'new';
   $t('team-sheet-title').textContent = editing ? 'Edit team' : 'Make a team';
-  $t('team-sheet-sub').textContent = `${sheetState.p1} & ${sheetState.p2}${sheetState.games != null ? ` · ${sheetState.games} games together` : ''}`;
+  $t('team-pick-players').hidden = !choosing;
+  $t('team-save').disabled = false;
+  if (!choosing) $t('team-sheet-sub').textContent = `${sheetState.p1} & ${sheetState.p2}${sheetState.games != null ? ` · ${sheetState.games} games together` : ''}`;
   const name = $t('team-name');
   name.value = editing ? (sheetState.team.Name || '') : '';
-  name.placeholder = `${short(sheetState.p1)} & ${short(sheetState.p2)}`;
+  name.placeholder = choosing ? 'Team name' : `${short(sheetState.p1)} & ${short(sheetState.p2)}`;
+  if (choosing) renderTeamPlayerPicks();
   $t('team-remove').hidden = !editing;
   $t('team-save').textContent = editing ? 'Save changes' : 'Save team';
   $t('team-color-msg').hidden = true;
@@ -188,7 +215,7 @@ function showTeamStatus(kind, text) {
 }
 
 async function saveTeamSheet() {
-  if (!teamSheet) return;
+  if (!teamSheet || !teamSheet.p1 || !teamSheet.p2) return;
   const passcode = await getOrPromptPasscode();
   if (!passcode) return;
   const btn = $t('team-save');
@@ -252,6 +279,21 @@ $t('suggest-list').addEventListener('click', (e) => {
   if (!btn) return;
   const sug = (teamState.suggestions || []).find((s) => s.key === btn.dataset.make);
   if (sug) openTeamSheet({ mode: 'add', p1: sug.p1, p2: sug.p2, games: sug.games, color: defaultTeamColor(null) });
+});
+
+$t('team-new').addEventListener('click', () => {
+  openTeamSheet({ mode: 'new', p1: '', p2: '', games: null, color: defaultTeamColor(null) });
+});
+
+$t('team-player-grid').addEventListener('click', (e) => {
+  const btn = e.target.closest('.player-chip');
+  if (!btn || btn.disabled || !teamSheet) return;
+  const name = btn.dataset.player;
+  if (teamSheet.p1 === name) { teamSheet.p1 = teamSheet.p2; teamSheet.p2 = ''; }
+  else if (teamSheet.p2 === name) teamSheet.p2 = '';
+  else if (!teamSheet.p1) teamSheet.p1 = name;
+  else if (!teamSheet.p2) teamSheet.p2 = name;
+  renderTeamPlayerPicks();
 });
 
 $t('team-cards').addEventListener('click', (e) => {
