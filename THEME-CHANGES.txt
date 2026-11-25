@@ -1,0 +1,24 @@
+# Theme changes
+
+**Theme:** Pickleballers "Chrome Arena" v1.0.0 (theme/tokens/tokens.json, 2026-11-25). Installed in Phase 6.
+
+## How it's installed
+- `theme/` holds the pack: css, fonts, textures, tokens (json + js) and SVG logos. It's read-only: change tokens there only by the pack's rule 8.
+  - Left out on purpose: `preview/` (sample page with made-up names), `tokens/tailwind.preset.js` (no Tailwind here) and the large PNG logos (the app uses the SVGs).
+  - THEME.md and README.md are left out too, because this repo ignores *.md (same reason this file is .txt). The spec is the Drive doc PICKLEBALLERS_THEME.md.
+- Every page loads `theme/css/pickleballers-theme.css` **before** `css/style.css`, and `css/arena.css` **after** `css/night.css`.
+- `css/arena.css` is the bridge. It points the app's color roles (`--night`, `--panel`, `--coral`, `--neon`, …) at `--pb-*` tokens and restyles the app's existing classes. No element IDs or JS-read classes were renamed.
+- App icons, favicons and the manifest icons come from the Pickleballers-Logo-Kit (`icons/`).
+
+## Local overrides and notes
+- **Texture paths:** a `url()` inside a `--pb-tex-*` variable resolves against the stylesheet that *uses* it. So `css/arena.css` names `../theme/textures/…` directly instead of using those variables.
+- **Team colors:** the pickers use the theme's 8 colors (`js/team-colors.js`), with Team A lime and Team B cyan as defaults. Teams already saved keep their colors.
+- **Ball-color rule turned off:** the lime team is the ball's color, so `minBallGap` is 0. Instead, the court ball gets a jet ring in `css/arena.css` so it stays visible on any team.
+- **Court:** the color check now runs against the theme court (`#2A2D35`) instead of the old navy.
+- **Ball drawing:** the app's 3D ball (`pickleballSvg()` in `js/live-render.js`) keeps its spinning holes, recolored to the theme's neon lime.
+  - Its class was renamed `pb-ball` → `ball-svg` (and `pb-holes` → `ball-holes`, `--pb-ball` → `--ball-img`) so it no longer collides with the theme's `.pb-ball` icon class. No script reads these class names.
+- **night.css:** old navy, coral and cream literals were swapped for `--pb-*` tokens (with `color-mix()` for transparency). LIVE and error dots are red.
+- **Hex values kept in JS:** canvas and SVG drawing need real values, so these hex colors stay in JS. They mirror tokens.json.
+  - Team presets, court, ball, confetti, QR code.
+- **Settings:** lime stays on the passcode Save. The other section Saves use chrome (one lime action per screen).
+- **Old fonts:** the Google Fonts link (Inter + Oswald) is still on each page. Nothing uses Oswald anymore. It's left in place until Noah OKs removing it (theme rule 7).
