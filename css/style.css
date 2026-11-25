@@ -1650,7 +1650,7 @@ a.btn {
 .live-dot.side-a { background: var(--team-a); }
 .live-dot.side-b { background: var(--team-b); }
 
-/* The ball image comes from pickleballSvg() in js/live-render.js (--pb-ball);
+/* The ball image comes from pickleballSvg() in js/live-render.js (--ball-img);
    the flat yellow ball is only a fallback if that script didn't run. */
 .live-ball-icon {
   width: 14px;
@@ -1658,7 +1658,7 @@ a.btn {
   flex: none;
   display: inline-block;
   border-radius: 50%;
-  background: var(--pb-ball, radial-gradient(circle at 40% 35%, #EEEC4E, #C9CD34)) center / contain no-repeat;
+  background: var(--ball-img, radial-gradient(circle at 40% 35%, #EEEC4E, #C9CD34)) center / contain no-repeat;
 }
 
 /* ---- Setup ---- */
@@ -1858,7 +1858,7 @@ body.live-in-progress main { padding-top: 10px; }
 .live-player.serving > circle { stroke: var(--horizon); stroke-width: 3.5; }
 .live-player-initials { fill: #fff; font-size: 12px; font-weight: 800; text-anchor: middle; }
 .live-player-name { fill: #fff; font-size: 11px; font-weight: 700; text-anchor: middle; paint-order: stroke; stroke: rgba(14, 18, 91, 0.45); stroke-width: 3px; }
-.live-svg-ball .pb-ball { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
+.live-svg-ball .ball-svg { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
 
 .live-toast {
   position: absolute;
@@ -2223,8 +2223,8 @@ body.tv-page { padding-left: 0; }
 .tv-rally-x { position: absolute; inset: 0; animation: tv-rally-x 1.6s linear infinite alternate; }
 .tv-rally-y { position: absolute; left: 0; bottom: 0; width: var(--rb); height: var(--rb); animation: tv-rally-y 1.6s infinite; }
 .tv-ball { width: 100%; height: 100%; transform-origin: 50% 100%; animation: tv-rally-squash 1.6s infinite; }
-.tv-ball .pb-ball { display: block; width: 100%; height: 100%; }
-.tv-ball .pb-holes { transform-box: view-box; transform-origin: 50% 50%; animation: tv-rally-spin 1.6s linear infinite alternate; }
+.tv-ball .ball-svg { display: block; width: 100%; height: 100%; }
+.tv-ball .ball-holes { transform-box: view-box; transform-origin: 50% 50%; animation: tv-rally-spin 1.6s linear infinite alternate; }
 .tv-rally-shadow {
   position: absolute; left: 0; bottom: -0.18em; width: var(--rb); height: calc(var(--rb) * 0.16); border-radius: 50%;
   background: radial-gradient(closest-side, rgba(0, 0, 0, 0.5), transparent); animation: tv-rally-shadow 1.6s infinite;
@@ -2297,7 +2297,7 @@ body.tv-page { padding-left: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tv-pill.live i, .tv-score.bump, .tv-team.scored::after, .tv-gamepoint, .tv-flash.show, .tv-feed li.new, .tv-rally-x, .tv-rally-y, .tv-ball, .tv-rally-shadow, .tv-ball .pb-holes, .tv-waiting h1 { animation: none; }
+  .tv-pill.live i, .tv-score.bump, .tv-team.scored::after, .tv-gamepoint, .tv-flash.show, .tv-feed li.new, .tv-rally-x, .tv-rally-y, .tv-ball, .tv-rally-shadow, .tv-ball .ball-holes, .tv-waiting h1 { animation: none; }
   .tv-rally-x { transform: translateX(30%); }
   .tv-flash.show { opacity: 1; transform: translate(-50%, -50%); }
   .tv-chance-bar i { transition: none; }
@@ -2309,14 +2309,14 @@ body.tv-page { padding-left: 0; }
 .fx-fault { pointer-events: none; }
 .fx-ball, .fx-shadow, .fx-ball-spin { transform-box: view-box; transform-origin: 0 0; }
 .fx-shadow { fill: #0E125B; opacity: 0.5; }
-.fx-ball .pb-ball { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
+.fx-ball .ball-svg { overflow: visible; filter: drop-shadow(0 1px 1.5px rgba(14, 18, 91, 0.45)); }
 
 /* ---- Game-start transition on the TV (playStartTransition in js/live-view.js) ---- */
 .tv-intro { position: fixed; inset: 0; z-index: 50; pointer-events: none; overflow: hidden; }
 .tv-intro-paddle { position: absolute; will-change: transform; filter: drop-shadow(0 1.5vmin 3vmin rgba(0, 0, 0, 0.45)); }
 .tv-intro-paddle .paddle { display: block; width: 100%; height: 100%; }
 .tv-intro-ball { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform, opacity; }
-.tv-intro-ball .pb-ball { display: block; width: 100%; height: 100%; }
+.tv-intro-ball .ball-svg { display: block; width: 100%; height: 100%; }
 .tv-intro-flood { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 50%, #EEEC4E, #DDE03C 60%, #C9CE33); }
 .tv.intro-hold[data-screen="live"] .tv-live { display: none; }
 .tv.intro-hold[data-screen="live"] .tv-waiting { display: flex; }

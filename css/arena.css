@@ -1,0 +1,340 @@
+/* Chrome Arena (Phase 6, Nov 2026).
+   Loads last, after theme/css/pickleballers-theme.css, style.css and night.css.
+   It points the app's own color roles at the theme's --pb-* tokens and
+   restyles the app's existing classes to match theme/THEME.md. Styles only:
+   no element IDs or JS-read classes change. Raw colors live in theme/. */
+
+/* Texture paths: a url() inside a --pb-tex-* variable resolves against the
+   stylesheet that USES it, so this file names theme/textures/ directly. */
+
+/* ---- 1. The app's color roles, re-pointed at the theme ---- */
+:root {
+  color-scheme: dark;
+
+  --night: var(--pb-bg);
+  --night-deep: var(--pb-bg-raised);
+  --panel: var(--pb-surface);
+  --panel-raised: var(--pb-surface-2);
+  --line: var(--pb-border);
+  --coral: var(--pb-lime);
+  --coral-light: var(--pb-lime);
+  --neon: var(--pb-lime);
+  --cream: var(--pb-chrome);
+  --mist: var(--pb-text-2);
+  --mist-dim: var(--pb-text-3);
+  --loss: var(--pb-text-3);
+  --font-display: var(--pb-font-display);
+
+  --bg: var(--pb-bg);
+  --surface: var(--pb-surface);
+  --border: var(--pb-border);
+  --text: var(--pb-text);
+  --text-muted: var(--pb-text-2);
+  --accent: var(--pb-lime);
+  --accent-soft: var(--pb-surface-2);
+  --link: var(--pb-lime);
+  --highlight: var(--pb-lime);
+  --highlight-text: var(--pb-lime);
+  --skyway-light: var(--pb-border);
+
+  --success: var(--pb-lime);
+  --success-fill: var(--pb-lime);
+  --success-bg: rgba(200, 255, 46, 0.12);
+  --success-border: rgba(200, 255, 46, 0.4);
+  --danger: var(--pb-danger);
+  --danger-fill: var(--pb-text-3);
+  --danger-bg: rgba(255, 77, 94, 0.14);
+
+  --radius: var(--pb-radius-md);
+  --shadow-sm: none;
+  --shadow-md: var(--pb-shadow-2);
+}
+
+/* Graduate has one weight: never fake-bold it. */
+html { font-synthesis: none; }
+
+/* ---- 2. Page ---- */
+body {
+  background-color: var(--pb-bg);
+  /* url()s in custom properties resolve against the sheet that uses them, so textures are named directly here */
+  background-image: url("../theme/textures/grain.svg"), url("../theme/textures/arena-bg.svg");
+  background-repeat: repeat, no-repeat;
+  background-size: 200px 200px, cover;
+  background-position: 0 0, top center;
+  background-attachment: scroll, fixed;
+  color: var(--pb-text);
+  font-family: var(--pb-font-ui);
+}
+@media (hover: none) { body { background-attachment: scroll, scroll; } }
+
+h1, h2, h3, .modal-card h2 { font-family: var(--pb-font-display); font-weight: 400; letter-spacing: 0.02em; }
+p { color: inherit; }
+
+/* League kicker becomes the crest + league name */
+.league-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pb-text-2);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+.league-banner::before {
+  content: "";
+  flex: none;
+  width: 30px;
+  height: 32px;
+  background: url("../theme/logos/crest-transparent.svg") center / contain no-repeat;
+}
+
+header.top-bar h1 {
+  font-family: var(--pb-font-display);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  background: var(--pb-gradient-chrome);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+h2 { font-weight: 400; }
+
+.settings-link {
+  border-radius: 50%;
+  border-color: var(--pb-border-strong);
+  background: transparent;
+  color: var(--pb-chrome);
+}
+
+/* ---- 3. Bottom tab bar ---- */
+nav.tab-bar {
+  background: rgba(18, 19, 24, 0.92);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--pb-border);
+}
+nav.tab-bar a, nav.tab-bar a svg { color: var(--pb-text-3); stroke: var(--pb-text-3); }
+nav.tab-bar a.active { color: var(--pb-lime); font-weight: 600; }
+nav.tab-bar a.active svg { stroke: var(--pb-lime); filter: drop-shadow(0 0 6px rgba(200, 255, 46, 0.6)); }
+
+/* ---- 4. Controls ---- */
+select, input[type="text"], input[type="number"], input[type="date"], input[type="password"], input[type="url"], textarea {
+  background-color: var(--pb-surface-2);
+  border: 1px solid var(--pb-border-strong);
+  border-radius: var(--pb-radius-md);
+  color: var(--pb-text);
+  font-size: 16px;
+}
+input::placeholder, textarea::placeholder { color: var(--pb-text-3); }
+select:focus, input:focus, textarea:focus { outline: none; border-color: var(--pb-lime); box-shadow: var(--pb-shadow-focus); }
+
+/* Segmented controls: lime pill for the chosen option */
+.toggle-group {
+  padding: 4px;
+  gap: 4px;
+  background: var(--pb-surface-2);
+  border: 1px solid var(--pb-border);
+  border-radius: var(--pb-radius-pill);
+}
+.toggle-group button { border-radius: var(--pb-radius-pill); color: var(--pb-text-2); font-weight: 600; }
+.toggle-group button.active { background: var(--pb-lime); color: var(--pb-text-on-lime); font-weight: 600; }
+
+/* Primary: lime pill. Secondary: ghost pill. */
+button.primary, .btn {
+  background: var(--pb-lime);
+  color: var(--pb-text-on-lime);
+  font-family: var(--pb-font-ui);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  border: 1px solid transparent;
+  border-radius: var(--pb-radius-pill);
+  box-shadow: none;
+  min-height: var(--pb-layout-tap-min);
+  transition: transform var(--pb-motion-fast) var(--pb-motion-ease), box-shadow var(--pb-motion-base) var(--pb-motion-ease), background var(--pb-motion-base);
+}
+button.primary:hover, .btn:hover { box-shadow: var(--pb-shadow-glow-lime); }
+button.primary:active, .btn:active { transform: scale(0.97); background: var(--pb-lime-deep); }
+button.primary:disabled, .btn:disabled { opacity: 0.4; box-shadow: none; }
+
+.btn.secondary {
+  background: transparent;
+  border: 1px solid var(--pb-border-strong);
+  color: var(--pb-text);
+  font-family: var(--pb-font-ui);
+  font-weight: 600;
+  border-radius: var(--pb-radius-pill);
+}
+.btn.secondary:hover { border-color: var(--pb-chrome); box-shadow: none; }
+.btn.secondary:active { background: var(--pb-surface-3); }
+
+button.small { background: var(--pb-surface-2); color: var(--pb-text); border: 1px solid var(--pb-border); border-radius: var(--pb-radius-pill); }
+
+.preset-btn { background: var(--pb-surface-2); border-color: var(--pb-border); color: var(--pb-text-2); border-radius: var(--pb-radius-pill); }
+.preset-btn.active { background: var(--pb-lime); border-color: var(--pb-lime); color: var(--pb-text-on-lime); }
+
+/* ---- 5. Tables ---- */
+table { border-color: var(--pb-border); }
+th { background: var(--pb-bg-raised); color: var(--pb-text-3); }
+th, td { border-bottom-color: var(--pb-border); }
+
+/* ---- 6. Sheets and modals ---- */
+.modal-overlay { background: rgba(5, 5, 6, 0.7); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.modal-card, .admin-required-card {
+  border: 1px solid transparent;
+  background: var(--pb-gradient-surface) padding-box, var(--pb-gradient-chrome) border-box;
+  box-shadow: var(--pb-shadow-2);
+}
+
+/* ---- 7. Cards: graphite surfaces; hero cards get the chrome edge ---- */
+.player-card, .podium-spot, .card, .admin-panel {
+  background: var(--pb-gradient-surface);
+  border: 1px solid var(--pb-border);
+  box-shadow: var(--pb-shadow-1);
+}
+.stat-grid, .live-scoreboard, .live-final-card, .bk-champ {
+  border: 1px solid transparent;
+  background: var(--pb-gradient-surface) padding-box, var(--pb-gradient-chrome) border-box;
+  box-shadow: var(--pb-shadow-2);
+}
+.live-scoreboard { position: relative; isolation: isolate; overflow: hidden; }
+.live-scoreboard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("../theme/textures/spotlight-overlay.svg") top center / cover no-repeat;
+  opacity: 0.55;
+}
+
+/* ---- 8. Ranks: gold, silver, bronze for 1-3 only ---- */
+.podium-spot { border-radius: var(--pb-radius-lg); }
+.podium-spot.place-1 {
+  border: 1px solid transparent;
+  background: var(--pb-gradient-surface) padding-box,
+    linear-gradient(180deg, color-mix(in srgb, var(--pb-gold) 40%, white), var(--pb-gold) 50%, color-mix(in srgb, var(--pb-gold) 55%, black)) border-box;
+  box-shadow: 0 0 26px color-mix(in srgb, var(--pb-gold) 22%, transparent), var(--pb-shadow-2);
+}
+.podium-crown { color: var(--pb-gold); }
+.podium-avatar, .place-1 .podium-avatar {
+  background: var(--pb-surface-3);
+  color: var(--pb-text);
+  font-weight: 800;
+  box-shadow: 0 0 0 2px var(--pb-bg), 0 0 0 4px var(--pb-silver);
+}
+.place-1 .podium-avatar { box-shadow: 0 0 0 2px var(--pb-bg), 0 0 0 4px var(--pb-gold); }
+.place-3 .podium-avatar { box-shadow: 0 0 0 2px var(--pb-bg), 0 0 0 4px var(--pb-bronze); }
+.podium-rating, .pc-rank { font-family: var(--pb-font-display); font-weight: 400; font-variant-numeric: tabular-nums; }
+
+.player-card.rank-1 {
+  border: 1px solid transparent;
+  background: var(--pb-gradient-surface) padding-box,
+    linear-gradient(180deg, color-mix(in srgb, var(--pb-gold) 40%, white), var(--pb-gold) 50%, color-mix(in srgb, var(--pb-gold) 55%, black)) border-box;
+}
+.player-card.rank-1 .pc-rank { color: var(--pb-gold); }
+.player-card.rank-2 .pc-rank { color: var(--pb-silver); }
+.player-card.rank-3 .pc-rank { color: var(--pb-bronze); }
+.pc-avatar, .player-card.rank-1 .pc-avatar { background: var(--pb-surface-3); color: var(--pb-text); }
+.player-card.rank-1 .pc-avatar { box-shadow: 0 0 0 2px var(--pb-bg), 0 0 0 3px var(--pb-gold); }
+
+/* Players / Teams switch: chrome for the page you're on */
+.board-switch { background: var(--pb-surface-2); border-color: var(--pb-border); }
+.board-switch a { font-weight: 400; color: var(--pb-text-2); }
+.board-switch a.active { background: var(--pb-gradient-chrome-button); color: var(--pb-text-on-lime); box-shadow: none; }
+
+/* ---- 9. Picks, chips, switches ---- */
+.player-chip { background: var(--pb-surface); border-color: var(--pb-border); }
+.player-chip.picked, .matchmaking-page .player-chip.picked { border-color: var(--pb-lime); background: color-mix(in srgb, var(--pb-lime) 10%, var(--pb-surface)); }
+.player-chip.picked .chip-slot, .matchmaking-page .player-chip.picked .chip-slot { background: var(--pb-lime); color: var(--pb-text-on-lime); }
+
+.bk-switch { background: var(--pb-surface-3); border-color: var(--pb-border-strong); }
+.bk-switch i { background: var(--pb-gradient-chrome); }
+.bk-switch.on { background: var(--pb-lime); border-color: var(--pb-lime); }
+.bk-switch.on i { background: var(--pb-bg); }
+
+/* ---- 10. Destructive actions are red outlines ---- */
+.btn.secondary.bk-remove, .btn.secondary.team-remove, .quick-action.danger-action {
+  border-color: color-mix(in srgb, var(--pb-danger) 60%, transparent);
+  color: var(--pb-danger);
+}
+.btn.secondary.bk-remove:active, .btn.secondary.team-remove:active { background: color-mix(in srgb, var(--pb-danger) 12%, transparent); }
+
+/* ---- 11. Live scorer ---- */
+.live-chip, .live-call-label { background: var(--pb-surface-3); color: var(--pb-text-2); }
+.live-tile { background: color-mix(in srgb, var(--pb-bg) 60%, transparent); }
+.live-tile-score, .live-call { font-family: var(--pb-font-display); font-weight: 400; font-variant-numeric: tabular-nums; }
+.live-court-surround { fill: var(--pb-surface); }
+.live-court-surface { fill: var(--pb-court); }
+.live-court-kitchen { fill: var(--pb-kitchen); }
+.live-court-lines rect, .live-court-lines line { stroke: var(--pb-court-line); }
+.live-court-net { stroke: var(--pb-chrome); }
+/* The court ball is the lime team color too: a jet ring keeps it visible on any player. */
+.live-svg-ball .ball-svg, .fx-ball .ball-svg {
+  filter: drop-shadow(1.2px 0 0 var(--pb-bg)) drop-shadow(-1.2px 0 0 var(--pb-bg)) drop-shadow(0 1.2px 0 var(--pb-bg)) drop-shadow(0 -1.2px 0 var(--pb-bg)) drop-shadow(0 0 4px color-mix(in srgb, var(--pb-lime) 70%, transparent));
+}
+.live-ball-icon { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--pb-lime) 60%, transparent)); }
+
+/* ---- 12. Brackets ---- */
+.bk-pill.live { background: color-mix(in srgb, var(--pb-danger) 14%, transparent); color: var(--pb-danger); }
+.bk-champ b, .bk-champ strong { font-family: var(--pb-font-display); font-weight: 400; }
+
+/* ---- 13. Empty states (no teams / no brackets yet) get the chrome iso court ---- */
+.team-empty::before {
+  content: "";
+  display: block;
+  width: 150px;
+  height: 110px;
+  margin: 0 auto 10px;
+  background: url("../theme/textures/iso-court.svg") center / contain no-repeat;
+  animation: pb-ball-float 2.4s var(--pb-motion-ease) infinite;
+}
+.team-empty, .empty-state { color: var(--pb-text-3); }
+
+/* "This phone is using a different data source" is an attention strip, not a win */
+.data-source-note {
+  border-color: color-mix(in srgb, var(--pb-warning) 50%, transparent);
+  background: color-mix(in srgb, var(--pb-warning) 10%, var(--pb-surface));
+  color: var(--pb-text);
+}
+.data-source-note span { color: var(--pb-text); }
+
+/* ---- 14. TV ---- */
+.tv-page {
+  background:
+    url("../theme/textures/grain.svg") 0 0 / 200px 200px repeat,
+    url("../theme/textures/arena-bg-tv.svg") center / cover no-repeat,
+    var(--pb-bg);
+}
+.tv-brand span {
+  font-family: var(--pb-font-display);
+  font-weight: 400;
+  background: var(--pb-gradient-chrome);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.tv-score, .tv-call, .tv-final-score, .tv-final-names, .tv-flash, .tv-stat b, .tv-feed .score, .tv-waiting h1 { font-family: var(--pb-font-display); font-weight: 400; }
+.tv-score, .tv-call, .tv-final-score, .tv-stat b { font-variant-numeric: tabular-nums; }
+.tv-team { border-radius: var(--pb-radius-xl); }
+.tv-pill.live { background: color-mix(in srgb, var(--pb-danger) 16%, transparent); color: var(--pb-text); }
+.tv-intro-flood { background: var(--pb-gradient-lime-ball); }
+.tv-qr-card, .tv-stat, .tv-feed li { border: 1px solid var(--pb-border); }
+
+/* ---- 15. One lime action per screen: Settings keeps lime for the passcode Save
+   (the one people use); its other section Saves are chrome. ---- */
+.btn#save-api-btn, .btn#save-league-name-btn, .btn#save-dupr-anchor-btn {
+  background: var(--pb-gradient-chrome-button);
+  color: var(--pb-text-on-lime);
+}
+.btn#save-api-btn:hover, .btn#save-league-name-btn:hover, .btn#save-dupr-anchor-btn:hover { box-shadow: var(--pb-shadow-glow-chrome); }
+.btn#save-api-btn:active, .btn#save-league-name-btn:active, .btn#save-dupr-anchor-btn:active { background: var(--pb-gradient-chrome-soft); }
+
+/* ---- 16. Tap targets: 44px where the old sizes fell short ---- */
+.admin-mode-toggle { min-height: var(--pb-layout-tap-min); min-width: var(--pb-layout-tap-min); }
+button.small { min-height: 36px; }
+.icon-btn { min-width: var(--pb-layout-tap-min); min-height: var(--pb-layout-tap-min); display: inline-grid; place-items: center; }
+.tv-brand img { width: 1.9em; height: 2em; border-radius: 0; object-fit: contain; }
