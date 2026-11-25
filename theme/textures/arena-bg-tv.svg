@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="1920" height="1080" preserveAspectRatio="xMidYMid slice"><defs><radialGradient id="arena" cx="50%" cy="0%" r="110%"><stop offset="0" stop-color="#1C1D22"/><stop offset=".6" stop-color="#0A0A0C"/><stop offset="1" stop-color="#050506"/></radialGradient><linearGradient id="beam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".16"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></linearGradient>
+<radialGradient id="floor" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#FFFFFF" stop-opacity=".07"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient></defs>
+<rect width="1920" height="1080" fill="url(#arena)"/>
+<polygon points="120,0 300,0 1120,860 820,920" fill="url(#beam)"/><polygon points="1800,0 1620,0 800,860 1100,920" fill="url(#beam)"/>
+<ellipse cx="960" cy="900" rx="900" ry="170" fill="url(#floor)"/></svg>
