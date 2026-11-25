@@ -20,7 +20,7 @@
   --mist: #AFBBD3;
   --mist-dim: #8796B3;
   --loss: #5E6F93;
-  --font-display: 'Oswald', 'Arial Narrow', Impact, sans-serif;
+  --font-display: var(--pb-font-display);
 
   --bg: var(--night);
   --surface: var(--panel);
