@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v23-brackets-4';
+const STATIC_CACHE = 'pickleball-static-v24-arena-1';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -15,6 +15,18 @@ const STATIC_ASSETS = [
   './brackets.html',
   './css/style.css',
   './css/night.css',
+  './css/arena.css',
+  './theme/css/pickleballers-theme.css',
+  './theme/fonts/graduate-latin-400-normal.woff2',
+  './theme/fonts/inter-latin-400-normal.woff2',
+  './theme/fonts/inter-latin-600-normal.woff2',
+  './theme/fonts/inter-latin-800-normal.woff2',
+  './theme/textures/grain.svg',
+  './theme/textures/arena-bg.svg',
+  './theme/textures/arena-bg-tv.svg',
+  './theme/textures/spotlight-overlay.svg',
+  './theme/textures/iso-court.svg',
+  './theme/logos/crest-transparent.svg',
   './js/config.js',
   './js/api.js',
   './js/admin.js',
@@ -44,7 +56,10 @@ const STATIC_ASSETS = [
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  './icons/apple-touch-icon.png'
+  './icons/apple-touch-icon.png',
+  './icons/icon-maskable-512.png',
+  './icons/favicon.ico',
+  './icons/favicon-32.png'
 ];
 
 self.addEventListener('install', (event) => {
