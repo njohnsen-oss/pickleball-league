@@ -54,7 +54,7 @@ function courtSvg(state) {
   });
 
   return `<svg class="live-court-svg" viewBox="0 0 340 180" role="img" aria-label="${escapeHtml(firstName(state.server))} serving to ${state.serveCourt} court">`
-    + '<defs><marker id="live-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#D9E03C"></path></marker></defs>'
+    + '<defs><marker id="live-arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#C8FF2E"></path></marker></defs>'
     + '<rect class="live-court-surround" x="0" y="0" width="340" height="180" rx="16"></rect>'
     + '<rect class="live-court-surface" x="20" y="15" width="300" height="150"></rect>'
     + '<rect class="live-court-kitchen" x="122" y="15" width="96" height="150"></rect>'
@@ -101,7 +101,7 @@ let pbUid = 0;
 //   rx, ry, rz extra rotation in radians, for spinning/rolling it in animations
 //   simple     slightly bigger holes so tiny icons still read as a pickleball
 //   className  extra class on the <svg>
-// The holes sit in <g class="pb-holes"> under fixed shading, so CSS can spin
+// The holes sit in <g class="ball-holes"> under fixed shading, so CSS can spin
 // that group while the light stays put.
 function pickleballSvg(opts = {}) {
   const id = 'pb' + (pbUid += 1);
@@ -133,15 +133,16 @@ function pickleballSvg(opts = {}) {
   });
   const size = (opts.size ? ` width="${opts.size}" height="${opts.size}"` : '')
     + (opts.x != null ? ` x="${opts.x}" y="${opts.y}"` : '');
-  return `<svg xmlns="http://www.w3.org/2000/svg" class="pb-ball${opts.className ? ' ' + opts.className : ''}" viewBox="0 0 100 100"${size} aria-hidden="true">`
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="ball-svg${opts.className ? ' ' + opts.className : ''}" viewBox="0 0 100 100"${size} aria-hidden="true">`
     + '<defs>'
-    + `<radialGradient id="${id}b" cx="0.62" cy="0.3" r="0.85"><stop offset="0" stop-color="#EEEC4E"/><stop offset="0.6" stop-color="#E2E43C"/><stop offset="0.9" stop-color="#D3D736"/><stop offset="1" stop-color="#ADB228"/></radialGradient>`
-    + `<linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5D610B"/><stop offset="0.6" stop-color="#7C8116"/><stop offset="1" stop-color="#ABAF2D"/></linearGradient>`
-    + `<radialGradient id="${id}s" cx="0.5" cy="0.5" r="0.5"><stop offset="0.8" stop-color="#464A00" stop-opacity="0"/><stop offset="1" stop-color="#464A00" stop-opacity="0.3"/></radialGradient>`
-    + `<radialGradient id="${id}g" cx="0.7" cy="0.24" r="0.24"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.15"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>`
+    // Chrome Arena neon lime (theme/textures/ball-neon.svg colors), lit from the upper left.
+    + `<radialGradient id="${id}b" cx="0.36" cy="0.3" r="0.78"><stop offset="0" stop-color="#F7FFB8"/><stop offset="0.3" stop-color="#D8FF3E"/><stop offset="0.76" stop-color="#8AD400"/><stop offset="1" stop-color="#4C8E00"/></radialGradient>`
+    + `<linearGradient id="${id}h" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2D5800"/><stop offset="0.6" stop-color="#4C8E00"/><stop offset="1" stop-color="#7CC400"/></linearGradient>`
+    + `<radialGradient id="${id}s" cx="0.36" cy="0.3" r="0.74"><stop offset="0.58" stop-color="#1D3A00" stop-opacity="0"/><stop offset="1" stop-color="#1D3A00" stop-opacity="0.42"/></radialGradient>`
+    + `<radialGradient id="${id}g" cx="0.34" cy="0.26" r="0.24"><stop offset="0" stop-color="#FFFFFF" stop-opacity="0.28"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>`
     + '</defs>'
     + `<circle cx="${C}" cy="${C}" r="${R}" fill="url(#${id}b)"/>`
-    + `<g class="pb-holes"><path d="${halos}" fill="#959A1E" fill-opacity="0.45"/><path d="${lips}" fill="#F7F48C" fill-opacity="0.75"/><path d="${holes}" fill="url(#${id}h)"/></g>`
+    + `<g class="ball-holes"><path d="${halos}" fill="#2D5800" fill-opacity="0.45"/><path d="${lips}" fill="#F2FF9E" fill-opacity="0.75"/><path d="${holes}" fill="url(#${id}h)"/></g>`
     + `<circle cx="${C}" cy="${C}" r="${R}" fill="url(#${id}s)"/>`
     + `<circle cx="${C}" cy="${C}" r="${R}" fill="url(#${id}g)"/>`
     + '</svg>';
@@ -151,7 +152,7 @@ function pickleballSvg(opts = {}) {
 function pickleballDataUri() {
   return 'url("data:image/svg+xml,' + encodeURIComponent(pickleballSvg({ simple: true })) + '")';
 }
-if (typeof document !== 'undefined') document.documentElement.style.setProperty('--pb-ball', pickleballDataUri());
+if (typeof document !== 'undefined') document.documentElement.style.setProperty('--ball-img', pickleballDataUri());
 
 // ---------- fault animation (on the court) ----------
 //
@@ -232,7 +233,7 @@ function playFaultAnimation(courtHost, prev, next, opts = {}) {
   const shakeEl = opts.shakeEl || courtHost;
   setTimeout(() => {
     if (!g.isConnected) return;
-    if (net && net.animate) net.animate([{ stroke: '#FFFFFF', strokeWidth: 7 }, { stroke: '#F6F1E7', strokeWidth: 4 }], { duration: 260, easing: 'ease-out' });
+    if (net && net.animate) net.animate([{ stroke: '#FFFFFF', strokeWidth: 7 }, { stroke: '#D9DEE7', strokeWidth: 4 }], { duration: 260, easing: 'ease-out' });
     const k = (n) => f(n * px / 4) + 'px';
     shakeEl.animate([
       { transform: 'translate(0, 0)' },
@@ -262,7 +263,7 @@ function playFaultAnimation(courtHost, prev, next, opts = {}) {
 // paddle is long). viewBox 0 0 135 300, sweet spot around (67.5, 90).
 function paddleSvg(opts = {}) {
   const id = 'pd' + (pbUid += 1);
-  const neon = '#C9F23C';
+  const neon = '#C8FF2E'; // theme --pb-lime
   const face = 'M40 7H95C116 7 129 21 129 42V168C129 187 116 201 97 201H38C19 201 6 187 6 168V42C6 21 19 7 40 7Z';
   return `<svg xmlns="http://www.w3.org/2000/svg" class="paddle${opts.className ? ' ' + opts.className : ''}" viewBox="0 0 135 300" aria-hidden="true">`
     + '<defs>'
@@ -379,7 +380,7 @@ function animateCourtMoves(courtHost, prev, next, opts = {}) {
     // Neon, white and the scoring team's own color (set by js/team-colors.js).
     let teamColor = '';
     try { teamColor = getComputedStyle(document.body).getPropertyValue('--team-' + moves[0].side.toLowerCase()).trim(); } catch (err) { /* keep the default */ }
-    const colors = ['#D9E03C', '#FFFFFF', teamColor || '#F25C43'];
+    const colors = ['#C8FF2E', '#FFFFFF', teamColor || '#2EE6FF'];
     let html = `<circle class="fx-spark-flash" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="9"></circle>`;
     for (let i = 0; i < 10; i += 1) html += `<circle class="fx-spark-dot" cx="0" cy="0" r="${i % 2 ? 1.6 : 2.2}" fill="${colors[i % 3]}"></circle>`;
     g.innerHTML = html;
@@ -421,7 +422,7 @@ function fireConfetti(canvas, count = 90, palette = null) {
   canvas.height = rect.height * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
-  const colors = palette && palette.length ? palette : ['#D9E03C', '#F25C43', '#F6F1E7', '#FF7A62', '#FFFFFF', '#AFBBD3'];
+  const colors = palette && palette.length ? palette : ['#C8FF2E', '#2EE6FF', '#D9DEE7', '#F2FF9E', '#FFFFFF', '#AEB6C6'];
   const speed = Math.max(1, rect.width / 360);
   const bits = Array.from({ length: count }, (_, i) => {
     const a = Math.random() * Math.PI - Math.PI; // upward fan
@@ -457,7 +458,7 @@ function liveViewUrl() {
 
 // QR code as an inline SVG (js/vendor/qrcode.min.js). Returns '' if the
 // library didn't load, so callers can just hide the box.
-function qrSvg(text, dark = '#0C1730', light = '#FFFFFF') {
+function qrSvg(text, dark = '#0A0A0C', light = '#FFFFFF') {
   if (typeof qrcode !== 'function') return '';
   try {
     const qr = qrcode(0, 'M');

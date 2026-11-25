@@ -4,7 +4,7 @@
    other team, too close to the neon ball, or too dark against the navy
    court. The chosen pair rides inside the live game (setup.colors), so the
    TV shows the same colors with no extra request; a game without colors
-   (older phones, older games) falls back to cream and coral.
+   (older phones, older games) falls back to lime and cyan.
 
    The live pages read these CSS variables (set on <body>):
      --team-a / --team-b         the team color (fills, bars, borders)
@@ -12,24 +12,28 @@
      --team-a-text / --team-b-text the color as text on the navy page
      --team-a-soft / -glow       translucent versions for tiles and glows */
 
+// Chrome Arena team palette (theme/tokens/tokens.json -> color.team). Team A
+// defaults to lime, Team B to cyan; every one of these reads on the jet court.
 const TEAM_COLOR_PRESETS = [
-  { name: 'Cream', hex: '#F6F1E7' },
-  { name: 'Coral', hex: '#F25C43' },
-  { name: 'Sky', hex: '#4DA8FF' },
-  { name: 'Teal', hex: '#1FC2A7' },
-  { name: 'Violet', hex: '#A57BFF' },
-  { name: 'Magenta', hex: '#FF4FA3' },
-  { name: 'Orange', hex: '#FF9A2E' },
-  { name: 'Silver', hex: '#AEB9CC' },
+  { name: 'Lime', hex: '#C8FF2E' },
+  { name: 'Cyan', hex: '#2EE6FF' },
+  { name: 'Magenta', hex: '#FF3DA5' },
+  { name: 'Orange', hex: '#FF7A1A' },
+  { name: 'Royal', hex: '#5B8CFF' },
+  { name: 'Gold', hex: '#F2C14E' },
+  { name: 'Red', hex: '#FF4D5E' },
+  { name: 'Chrome', hex: '#E6E9F0' },
 ];
-const TEAM_COLOR_DEFAULTS = { A: '#F6F1E7', B: '#F25C43' };
+const TEAM_COLOR_DEFAULTS = { A: '#C8FF2E', B: '#2EE6FF' };
 const TEAM_COLOR_STORAGE_KEY = 'pickleballTeamColors';
 // Distances are CIE Lab ΔE (about 2.3 = just noticeable); contrast is the
-// WCAG ratio. Raise a number to make the rule stricter.
-const TEAM_COLOR_RULES = { minTeamGap: 30, minBallGap: 32, minCourtContrast: 2.2 };
-const TEAM_COLOR_BALL = '#D9E03C';
-const TEAM_COLOR_COURT = '#1F3D6E';
-const TEAM_COLOR_NIGHT = '#0C1730';
+// WCAG ratio. Raise a number to make the rule stricter. The ball rule is off
+// (0): in Chrome Arena the ball IS the lime team color, so the court ball
+// carries a dark ring instead and reads on any team color.
+const TEAM_COLOR_RULES = { minTeamGap: 30, minBallGap: 0, minCourtContrast: 2.2 };
+const TEAM_COLOR_BALL = '#C8FF2E';
+const TEAM_COLOR_COURT = '#2A2D35';
+const TEAM_COLOR_NIGHT = '#0A0A0C';
 
 function teamHexToRgb(hex) {
   const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || '').trim());
@@ -88,7 +92,7 @@ function checkTeamColor(hex, otherHex) {
     return { ok: false, reason: 'Too close to the neon ball, it would disappear on court.' };
   }
   if (teamContrast(color, TEAM_COLOR_COURT) < TEAM_COLOR_RULES.minCourtContrast) {
-    return { ok: false, reason: 'Too dark to see on the navy court.' };
+    return { ok: false, reason: 'Too dark to see on the court.' };
   }
   const other = teamNormalizeHex(otherHex);
   if (other && teamColorDistance(color, other) < TEAM_COLOR_RULES.minTeamGap) {

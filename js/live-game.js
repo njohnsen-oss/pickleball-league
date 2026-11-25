@@ -17,7 +17,7 @@ const TAP_GUARD_MS = 350; // taps closer together than this are a double-tap
 let roster = [];
 let draft = { format: 'Doubles', slots: { a1: '', a2: '', b1: '', b2: '' }, firstServingSide: 'A', target: LIVE_DEFAULT_TARGET,
   // Team colors (js/team-colors.js); each phone remembers the last pair used.
-  colors: typeof loadLastTeamColors === 'function' ? loadLastTeamColors() : { A: '#F6F1E7', B: '#F25C43' } };
+  colors: typeof loadLastTeamColors === 'function' ? loadLastTeamColors() : { A: '#C8FF2E', B: '#2EE6FF' } };
 let game = null; // { setup, events, requestId, saved: null | { gameId, deltaA, deltaB } }
 let lastTapAt = 0;
 // After Start, Point/Fault wait for the TV's 1.2s start animation: the TV gets

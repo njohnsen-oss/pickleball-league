@@ -127,8 +127,8 @@ function paintTeamToggle() {
 
 function defaultTeamColor(exceptTeamId) {
   const used = new Set((teamState.teams || []).filter((t) => t.TeamId !== exceptTeamId).map((t) => String(t.Color).toUpperCase()));
-  const pick = TEAM_COLOR_PRESETS.find((p) => p.name !== 'Cream' && !used.has(p.hex) && checkTeamColor(p.hex, null).ok);
-  return pick ? pick.hex : '#F25C43';
+  const pick = TEAM_COLOR_PRESETS.find((p) => !used.has(p.hex) && checkTeamColor(p.hex, null).ok);
+  return pick ? pick.hex : TEAM_COLOR_DEFAULTS.A;
 }
 
 function renderTeamSwatches() {
