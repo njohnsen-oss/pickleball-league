@@ -1,4 +1,4 @@
-const STATIC_CACHE = 'pickleball-static-v24-arena-1';
+const STATIC_CACHE = 'pickleball-static-v24-arena-2';
 const STATIC_ASSETS = [
   './',
   './index.html',

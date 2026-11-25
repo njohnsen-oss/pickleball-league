@@ -21,4 +21,4 @@
 - **Hex values kept in JS:** canvas and SVG drawing need real values, so these hex colors stay in JS. They mirror tokens.json.
   - Team presets, court, ball, confetti, QR code.
 - **Settings:** lime stays on the passcode Save. The other section Saves use chrome (one lime action per screen).
-- **Old fonts:** the Google Fonts link (Inter + Oswald) is still on each page. Nothing uses Oswald anymore. It's left in place until Noah OKs removing it (theme rule 7).
+- **Old fonts:** the unused Oswald font was removed from the Google Fonts link (Phase 6 follow-up). Inter still loads from Google for weights the theme doesn't bundle (200, 500, 700).
